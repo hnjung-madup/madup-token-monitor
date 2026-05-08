@@ -10,6 +10,10 @@ pub struct UsageEvent {
     pub output_tokens: Option<i64>,
     pub cache_read: Option<i64>,
     pub cache_write: Option<i64>,
+    /// cache_creation의 ephemeral_5m 분량 (없으면 전체를 5m로 간주)
+    pub cache_write_5m: Option<i64>,
+    /// cache_creation의 ephemeral_1h 분량 (있으면 1h price로 계산)
+    pub cache_write_1h: Option<i64>,
     pub cost_usd: Option<f64>,
     pub project: Option<String>,
     pub session_id: Option<String>,

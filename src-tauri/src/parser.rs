@@ -68,10 +68,26 @@ fn parse_claude_line(
                 .get("cache_read_input_tokens")
                 .and_then(Value::as_i64)
                 .unwrap_or(0);
-            let cache_write = usage
+            let cache_creation_total = usage
                 .get("cache_creation_input_tokens")
                 .and_then(Value::as_i64)
                 .unwrap_or(0);
+            // cache_creation 안에 ephemeral_5m / ephemeral_1h 분리 필드가 있으면 사용,
+            // 없으면 전체를 5m으로 간주 (기존 jsonl 호환).
+            let cache_write_5m = usage
+                .pointer("/cache_creation/ephemeral_5m_input_tokens")
+                .and_then(Value::as_i64)
+                .unwrap_or(0);
+            let cache_write_1h = usage
+                .pointer("/cache_creation/ephemeral_1h_input_tokens")
+                .and_then(Value::as_i64)
+                .unwrap_or(0);
+            let (cw_5m, cw_1h) = if cache_write_5m + cache_write_1h > 0 {
+                (cache_write_5m, cache_write_1h)
+            } else {
+                (cache_creation_total, 0)
+            };
+            let cache_write = cw_5m + cw_1h;
 
             // dedup keys — same response that gets mirrored across worktrees
             // shares (message_id, request_id), so we use them as the unique tuple.
@@ -90,7 +106,8 @@ fn parse_claude_line(
                     input_tokens.unwrap_or(0),
                     output_tokens.unwrap_or(0),
                     cache_read,
-                    cache_write,
+                    cw_5m,
+                    cw_1h,
                 )
             });
 
@@ -103,6 +120,8 @@ fn parse_claude_line(
                 output_tokens,
                 cache_read: Some(cache_read),
                 cache_write: Some(cache_write),
+                cache_write_5m: Some(cw_5m),
+                cache_write_1h: Some(cw_1h),
                 cost_usd,
                 project: project.map(str::to_owned),
                 session_id: session_id.map(str::to_owned),
@@ -170,6 +189,8 @@ fn parse_codex_line(
             output_tokens,
             cache_read: Some(0),
             cache_write: Some(0),
+            cache_write_5m: Some(0),
+            cache_write_1h: Some(0),
             cost_usd,
             project: project.map(str::to_owned),
             session_id: session_id.map(str::to_owned),
@@ -214,6 +235,8 @@ fn parse_opencode_line(
             output_tokens,
             cache_read: Some(0),
             cache_write: Some(0),
+            cache_write_5m: Some(0),
+            cache_write_1h: Some(0),
             cost_usd,
             project: project.map(str::to_owned),
             session_id: session_id.map(str::to_owned),

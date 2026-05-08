@@ -52,11 +52,11 @@ pub fn calc_cost_usd(
     input_tokens: i64,
     output_tokens: i64,
     cache_read: i64,
-    cache_write: i64,
+    cache_write_5m: i64,
+    cache_write_1h: i64,
 ) -> f64 {
     let table = price_table();
-    // Exact match → longest-prefix match → contains.
-    // 가장 긴 매칭이 가장 specific하므로 (opus-4-7 vs opus-4) 우선.
+    // Exact → longest-prefix → contains. 가장 긴 매칭이 가장 specific (opus-4-7 vs opus-4).
     let price = table.get(model).or_else(|| {
         table
             .iter()
@@ -68,10 +68,11 @@ pub fn calc_cost_usd(
     if let Some(p) = price {
         let input_cost = (input_tokens as f64 / 1_000_000.0) * p.input_usd_per_mtok;
         let output_cost = (output_tokens as f64 / 1_000_000.0) * p.output_usd_per_mtok;
-        // cache_read billed at 10% of input price, cache_write at 125% (Anthropic pricing)
+        // Anthropic 공식: cache_read = input * 0.1, cache_write_5m = input * 1.25, cache_write_1h = input * 2.0
         let cache_read_cost = (cache_read as f64 / 1_000_000.0) * p.input_usd_per_mtok * 0.1;
-        let cache_write_cost = (cache_write as f64 / 1_000_000.0) * p.input_usd_per_mtok * 1.25;
-        input_cost + output_cost + cache_read_cost + cache_write_cost
+        let cache_write_5m_cost = (cache_write_5m as f64 / 1_000_000.0) * p.input_usd_per_mtok * 1.25;
+        let cache_write_1h_cost = (cache_write_1h as f64 / 1_000_000.0) * p.input_usd_per_mtok * 2.0;
+        input_cost + output_cost + cache_read_cost + cache_write_5m_cost + cache_write_1h_cost
     } else {
         0.0
     }
@@ -145,22 +146,21 @@ mod tests {
     #[test]
     fn test_calc_cost_known_model() {
         // claude-3-5-sonnet: $3/Mtok input, $15/Mtok output
-        let cost = calc_cost_usd("claude-3-5-sonnet-20241022", 1_000_000, 100_000, 0, 0);
+        let cost = calc_cost_usd("claude-3-5-sonnet-20241022", 1_000_000, 100_000, 0, 0, 0);
         assert!((cost - 4.5).abs() < 0.001, "cost={cost}");
     }
 
     #[test]
     fn test_calc_cost_unknown_model() {
-        let cost = calc_cost_usd("unknown-model-xyz", 1_000_000, 1_000_000, 0, 0);
+        let cost = calc_cost_usd("unknown-model-xyz", 1_000_000, 1_000_000, 0, 0, 0);
         assert_eq!(cost, 0.0);
     }
 
     #[test]
     fn test_calc_cost_cache() {
-        // cache_read at 10% of input, cache_write at 125%
-        // input $3/Mtok → read $0.3/Mtok, write $3.75/Mtok
-        let cost = calc_cost_usd("claude-3-5-sonnet-20241022", 0, 0, 1_000_000, 1_000_000);
-        let expected = 0.3 + 3.75;
+        // sonnet input=$3 → cache_read=$0.3, cache_write_5m=$3.75, cache_write_1h=$6.0
+        let cost = calc_cost_usd("claude-3-5-sonnet-20241022", 0, 0, 1_000_000, 1_000_000, 1_000_000);
+        let expected = 0.3 + 3.75 + 6.0;
         assert!((cost - expected).abs() < 0.001, "cost={cost}");
     }
 }

@@ -21,19 +21,21 @@ pub fn open() -> Result<Connection> {
 fn migrate(conn: &Connection) -> Result<()> {
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS usage_events (
-            id           INTEGER PRIMARY KEY,
-            source       TEXT NOT NULL,
-            model        TEXT,
-            ts           INTEGER NOT NULL,
-            input_tokens INTEGER,
-            output_tokens INTEGER,
-            cache_read   INTEGER,
-            cache_write  INTEGER,
-            cost_usd     REAL,
-            project      TEXT,
-            session_id   TEXT,
-            message_id   TEXT,
-            request_id   TEXT
+            id              INTEGER PRIMARY KEY,
+            source          TEXT NOT NULL,
+            model           TEXT,
+            ts              INTEGER NOT NULL,
+            input_tokens    INTEGER,
+            output_tokens   INTEGER,
+            cache_read      INTEGER,
+            cache_write     INTEGER,
+            cache_write_5m  INTEGER,
+            cache_write_1h  INTEGER,
+            cost_usd        REAL,
+            project         TEXT,
+            session_id      TEXT,
+            message_id      TEXT,
+            request_id      TEXT
         );
         CREATE INDEX IF NOT EXISTS idx_usage_ts ON usage_events(ts);
         -- ai-token-monitor와 동일한 dedup key. 같은 응답이 여러 jsonl에 미러되어도
@@ -57,6 +59,8 @@ fn migrate(conn: &Connection) -> Result<()> {
     // 기존 DB의 누락된 컬럼 추가 (idempotent)
     let _ = conn.execute("ALTER TABLE usage_events ADD COLUMN message_id TEXT", []);
     let _ = conn.execute("ALTER TABLE usage_events ADD COLUMN request_id TEXT", []);
+    let _ = conn.execute("ALTER TABLE usage_events ADD COLUMN cache_write_5m INTEGER", []);
+    let _ = conn.execute("ALTER TABLE usage_events ADD COLUMN cache_write_1h INTEGER", []);
 
     // 옛 (source, session_id, ts, model, tokens) UNIQUE INDEX는 약해서 중복 허용 — 제거
     let _ = conn.execute("DROP INDEX IF EXISTS uniq_usage_event", []);
@@ -67,12 +71,13 @@ fn migrate(conn: &Connection) -> Result<()> {
 pub fn insert_usage_event(conn: &Connection, e: &UsageEvent) -> Result<()> {
     conn.execute(
         "INSERT OR IGNORE INTO usage_events
-            (source, model, ts, input_tokens, output_tokens, cache_read, cache_write, cost_usd, project, session_id, message_id, request_id)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12)",
+            (source, model, ts, input_tokens, output_tokens, cache_read, cache_write, cache_write_5m, cache_write_1h, cost_usd, project, session_id, message_id, request_id)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14)",
         params![
             e.source, e.model, e.ts,
             e.input_tokens, e.output_tokens,
             e.cache_read, e.cache_write,
+            e.cache_write_5m, e.cache_write_1h,
             e.cost_usd, e.project, e.session_id,
             e.message_id, e.request_id,
         ],
@@ -90,17 +95,19 @@ pub fn insert_tool_call(conn: &Connection, t: &ToolCall) -> Result<()> {
 }
 
 /// Returns unix-ms range for the given range string.
+/// "today" / "1d" 모두 local timezone 자정 ~ 지금. 한국 사용자가 KST 0시부터 인식하는 "오늘"과 일치.
 pub fn range_bounds(range: &str) -> (i64, i64) {
+    use chrono::{Local, TimeZone};
     let now = chrono::Utc::now().timestamp_millis();
     let day_ms = 86_400_000i64;
     let start = match range {
-        "today" => {
-            let today = chrono::Utc::now().date_naive();
-            chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(
-                today.and_hms_opt(0, 0, 0).unwrap(),
-                chrono::Utc,
-            )
-            .timestamp_millis()
+        "today" | "1d" => {
+            let today = Local::now().date_naive();
+            Local
+                .from_local_datetime(&today.and_hms_opt(0, 0, 0).unwrap())
+                .single()
+                .map(|dt| dt.timestamp_millis())
+                .unwrap_or(now - day_ms)
         }
         "7d" => now - 7 * day_ms,
         "30d" => now - 30 * day_ms,
