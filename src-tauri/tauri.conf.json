@@ -30,6 +30,12 @@
     }
   },
   "plugins": {
+    "deep-link": {
+      "mobile": [],
+      "desktop": {
+        "schemes": ["madup-token-monitor"]
+      }
+    },
     "updater": {
       "pubkey": "",
       "endpoints": [

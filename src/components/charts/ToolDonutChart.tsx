@@ -1,5 +1,5 @@
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { ToolUsage } from "@/mocks/usageMock";
+import type { SourceSummary } from "@/types/models";
 import { formatUSD } from "@/lib/format";
 
 const COLORS = [
@@ -10,11 +10,11 @@ const COLORS = [
 ];
 
 interface Props {
-  data: ToolUsage[];
+  data: SourceSummary[];
 }
 
 export function ToolDonutChart({ data }: Props) {
-  const chartData = data.map((d) => ({ name: d.tool, value: d.cost_usd }));
+  const chartData = data.map((d) => ({ name: d.source, value: d.cost_usd }));
   return (
     <ResponsiveContainer width="100%" height={220}>
       <PieChart>

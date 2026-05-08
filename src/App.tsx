@@ -7,9 +7,12 @@ import MCP from "@/pages/MCP";
 import Leaderboard from "@/pages/Leaderboard";
 import Chat from "@/pages/Chat";
 import Settings from "@/pages/Settings";
+import Login from "@/pages/Login";
+import Profile from "@/pages/Profile";
+import { AuthGuard } from "@/lib/AuthGuard";
 
 // [ROUTING MARKER] W3: Dashboard, MCP 페이지 라우트는 이미 등록됨
-// [ROUTING MARKER] W4: Leaderboard, 로그인 페이지 라우트 추가 가능
+// [ROUTING MARKER] W4: Login, Profile 라우트 추가됨
 // [ROUTING MARKER] W5: 채팅 라우트 이미 등록됨
 
 const queryClient = new QueryClient();
@@ -54,18 +57,21 @@ function Sidebar() {
 
 function Layout() {
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar />
-      <main className="flex-1 overflow-y-auto bg-background">
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/mcp" element={<MCP />} />
-          <Route path="/leaderboard" element={<Leaderboard />} />
-          <Route path="/chat" element={<Chat />} />
-          <Route path="/settings" element={<Settings />} />
-        </Routes>
-      </main>
-    </div>
+    <AuthGuard>
+      <div className="flex h-screen overflow-hidden">
+        <Sidebar />
+        <main className="flex-1 overflow-y-auto bg-background">
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/mcp" element={<MCP />} />
+            <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/chat" element={<Chat />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/settings/profile" element={<Profile />} />
+          </Routes>
+        </main>
+      </div>
+    </AuthGuard>
   );
 }
 
@@ -73,7 +79,10 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <Layout />
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/*" element={<Layout />} />
+        </Routes>
       </BrowserRouter>
     </QueryClientProvider>
   );

@@ -8,21 +8,20 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { DailyUsage } from "@/mocks/usageMock";
-import { formatDate, formatTokens } from "@/lib/format";
+import type { Point } from "@/types/models";
+import { formatTokens } from "@/lib/format";
 import { useTranslation } from "react-i18next";
 
 interface Props {
-  data: DailyUsage[];
+  data: Point[];
 }
 
 export function DailyBarChart({ data }: Props) {
   const { t } = useTranslation();
   const chartData = data.map((d) => ({
-    date: formatDate(d.date),
+    date: new Date(d.ts).toLocaleDateString("ko-KR", { month: "short", day: "numeric" }),
     [t("dashboard.legend.input")]: d.input_tokens,
     [t("dashboard.legend.output")]: d.output_tokens,
-    [t("dashboard.legend.cache")]: d.cache_tokens,
   }));
 
   return (
@@ -34,8 +33,7 @@ export function DailyBarChart({ data }: Props) {
         <Tooltip formatter={(v) => formatTokens(Number(v))} />
         <Legend />
         <Bar dataKey={t("dashboard.legend.input")} stackId="a" fill="hsl(var(--primary))" radius={[0, 0, 0, 0]} />
-        <Bar dataKey={t("dashboard.legend.output")} stackId="a" fill="hsl(var(--secondary))" />
-        <Bar dataKey={t("dashboard.legend.cache")} stackId="a" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} />
+        <Bar dataKey={t("dashboard.legend.output")} stackId="a" fill="hsl(var(--secondary))" radius={[4, 4, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );

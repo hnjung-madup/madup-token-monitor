@@ -1,5 +1,5 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
-import { McpUsage } from "@/mocks/usageMock";
+import type { McpUsage } from "@/types/models";
 
 interface Props {
   data: McpUsage[];
@@ -9,11 +9,11 @@ interface Props {
 
 export function McpBarChart({ data, avgData, color = "hsl(var(--primary))" }: Props) {
   const chartData = data.map((d) => {
-    const avg = avgData?.find((a) => a.name === d.name);
+    const avg = avgData?.find((a) => a.mcp_server === d.mcp_server);
     return {
-      name: d.name.replace("mcp-", ""),
-      calls: d.calls,
-      avg: avg ? Math.round(avg.calls / 10) : undefined,
+      name: d.mcp_server.replace("mcp-", ""),
+      calls: d.count,
+      avg: avg ? Math.round(avg.count / 10) : undefined,
     };
   });
 

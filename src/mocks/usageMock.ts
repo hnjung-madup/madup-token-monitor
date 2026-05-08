@@ -1,107 +1,104 @@
-export interface DailyUsage {
-  date: string;
-  input_tokens: number;
-  output_tokens: number;
-  cache_tokens: number;
-  cost_usd: number;
-}
-
-export interface ModelUsage {
-  model: string;
-  tokens: number;
-  cost_usd: number;
-}
-
-export interface ToolUsage {
-  tool: string;
-  calls: number;
-  cost_usd: number;
-}
-
-export interface McpUsage {
-  name: string;
-  calls: number;
-}
-
-export interface UsageSummary {
-  total_input_tokens: number;
-  total_output_tokens: number;
-  total_cache_tokens: number;
-  total_cost_usd: number;
-  daily: DailyUsage[];
-  by_model: ModelUsage[];
-  by_tool: ToolUsage[];
-  top_mcps: McpUsage[];
-  team_top_mcps: McpUsage[];
-}
+import type { Summary, Point, McpUsage, PluginUsage, DayCount, Range } from "@/types/models";
 
 function randomInt(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function generateDays(n: number): DailyUsage[] {
-  return Array.from({ length: n }, (_, i) => {
+function rangeToDays(range: Range): number {
+  if (range === "1d") return 1;
+  if (range === "7d") return 7;
+  return 30;
+}
+
+export function buildMockSummary(range: Range): Summary {
+  const days = rangeToDays(range);
+  const inp = randomInt(100_000, 400_000) * days;
+  const out = randomInt(20_000, 80_000) * days;
+  const cr = randomInt(10_000, 80_000) * days;
+  const cw = randomInt(5_000, 40_000) * days;
+  const cost = (inp * 3 + out * 15 + cr * 0.3) / 1_000_000;
+
+  return {
+    total_input_tokens: inp,
+    total_output_tokens: out,
+    total_cache_read: cr,
+    total_cache_write: cw,
+    total_cost_usd: cost,
+    total_cost_krw: cost * 1380,
+    by_source: [
+      { source: "claude-code", input_tokens: Math.floor(inp * 0.6), output_tokens: Math.floor(out * 0.6), cost_usd: cost * 0.6 },
+      { source: "cursor", input_tokens: Math.floor(inp * 0.25), output_tokens: Math.floor(out * 0.25), cost_usd: cost * 0.25 },
+      { source: "api", input_tokens: Math.floor(inp * 0.15), output_tokens: Math.floor(out * 0.15), cost_usd: cost * 0.15 },
+    ],
+    by_model: [
+      { model: "claude-opus-4-7", input_tokens: Math.floor(inp * 0.4), output_tokens: Math.floor(out * 0.4), cost_usd: cost * 0.5 },
+      { model: "claude-sonnet-4-6", input_tokens: Math.floor(inp * 0.45), output_tokens: Math.floor(out * 0.45), cost_usd: cost * 0.35 },
+      { model: "claude-haiku-4-5", input_tokens: Math.floor(inp * 0.15), output_tokens: Math.floor(out * 0.15), cost_usd: cost * 0.15 },
+    ],
+  };
+}
+
+export function buildMockTimeseries(range: Range, _source?: string): Point[] {
+  const days = rangeToDays(range);
+  const now = Date.now();
+  return Array.from({ length: days * 4 }, (_, i) => {
+    const ts = now - (days * 4 - 1 - i) * 6 * 3_600_000;
+    const inp = randomInt(5_000, 60_000);
+    const out = randomInt(1_000, 15_000);
+    return { ts, input_tokens: inp, output_tokens: out, cost_usd: (inp * 3 + out * 15) / 1_000_000 };
+  });
+}
+
+export function buildMockTopMcp(range: Range): McpUsage[] {
+  const days = rangeToDays(range);
+  return [
+    { mcp_server: "mcp-atlassian", count: randomInt(60, 200) },
+    { mcp_server: "playwright", count: randomInt(40, 160) },
+    { mcp_server: "slack-bot", count: randomInt(30, 120) },
+    { mcp_server: "github", count: randomInt(20, 100) },
+    { mcp_server: "filesystem", count: randomInt(15, 80) },
+    { mcp_server: "postgres", count: randomInt(10, 60) },
+    { mcp_server: "google-drive", count: randomInt(8, 50) },
+    { mcp_server: "fetch", count: randomInt(5, 40) },
+    { mcp_server: "memory", count: randomInt(3, 30) },
+    { mcp_server: "sequential-thinking", count: randomInt(2, 20) },
+  ].map((m) => ({ ...m, count: Math.max(1, Math.round(m.count * days / 7)) }));
+}
+
+export function buildMockTopPlugins(range: Range): PluginUsage[] {
+  const days = rangeToDays(range);
+  return [
+    { plugin_id: "oh-my-claudecode", count: randomInt(50, 150) },
+    { plugin_id: "dct-claude-plugin", count: randomInt(30, 100) },
+    { plugin_id: "impeccable", count: randomInt(20, 80) },
+    { plugin_id: "frontend-design", count: randomInt(10, 60) },
+    { plugin_id: "ui-ux-pro-max", count: randomInt(5, 40) },
+  ].map((p) => ({ ...p, count: Math.max(1, Math.round(p.count * days / 7)) }));
+}
+
+export function buildMockHeatmap(days = 30): DayCount[] {
+  return Array.from({ length: days }, (_, i) => {
     const d = new Date();
-    d.setDate(d.getDate() - (n - 1 - i));
-    const input = randomInt(50_000, 400_000);
-    const output = randomInt(10_000, 80_000);
-    const cache = randomInt(5_000, 100_000);
+    d.setDate(d.getDate() - (days - 1 - i));
     return {
       date: d.toISOString().slice(0, 10),
-      input_tokens: input,
-      output_tokens: output,
-      cache_tokens: cache,
-      cost_usd: (input * 3 + output * 15 + cache * 0.3) / 1_000_000,
+      count: randomInt(0, 40),
+      cost_usd: Math.random() * 2,
     };
   });
 }
 
-export function buildMockSummary(days: 1 | 7 | 30): UsageSummary {
-  const daily = generateDays(days);
-  const total_input_tokens = daily.reduce((s, d) => s + d.input_tokens, 0);
-  const total_output_tokens = daily.reduce((s, d) => s + d.output_tokens, 0);
-  const total_cache_tokens = daily.reduce((s, d) => s + d.cache_tokens, 0);
-  const total_cost_usd = daily.reduce((s, d) => s + d.cost_usd, 0);
-
-  return {
-    total_input_tokens,
-    total_output_tokens,
-    total_cache_tokens,
-    total_cost_usd,
-    daily,
-    by_model: [
-      { model: "claude-opus-4-7", tokens: Math.floor(total_input_tokens * 0.4), cost_usd: total_cost_usd * 0.5 },
-      { model: "claude-sonnet-4-6", tokens: Math.floor(total_input_tokens * 0.45), cost_usd: total_cost_usd * 0.35 },
-      { model: "claude-haiku-4-5", tokens: Math.floor(total_input_tokens * 0.15), cost_usd: total_cost_usd * 0.15 },
-    ],
-    by_tool: [
-      { tool: "Claude Code", calls: randomInt(200, 800), cost_usd: total_cost_usd * 0.6 },
-      { tool: "Cursor", calls: randomInt(50, 200), cost_usd: total_cost_usd * 0.25 },
-      { tool: "API Direct", calls: randomInt(10, 80), cost_usd: total_cost_usd * 0.15 },
-    ],
-    top_mcps: [
-      { name: "mcp-atlassian", calls: randomInt(80, 300) },
-      { name: "playwright", calls: randomInt(50, 200) },
-      { name: "slack-bot", calls: randomInt(40, 150) },
-      { name: "github", calls: randomInt(30, 120) },
-      { name: "filesystem", calls: randomInt(20, 100) },
-      { name: "postgres", calls: randomInt(15, 80) },
-      { name: "google-drive", calls: randomInt(10, 60) },
-      { name: "fetch", calls: randomInt(8, 50) },
-      { name: "memory", calls: randomInt(5, 40) },
-      { name: "sequential-thinking", calls: randomInt(3, 30) },
-    ],
-    team_top_mcps: [
-      { name: "mcp-atlassian", calls: randomInt(500, 2000) },
-      { name: "playwright", calls: randomInt(300, 1500) },
-      { name: "slack-bot", calls: randomInt(200, 1200) },
-      { name: "github", calls: randomInt(150, 1000) },
-      { name: "filesystem", calls: randomInt(100, 800) },
-      { name: "postgres", calls: randomInt(80, 600) },
-      { name: "google-drive", calls: randomInt(60, 500) },
-      { name: "fetch", calls: randomInt(40, 400) },
-      { name: "memory", calls: randomInt(30, 300) },
-      { name: "sequential-thinking", calls: randomInt(20, 200) },
-    ],
-  };
+export function buildMockCompanyTopMcp(): McpUsage[] {
+  return [
+    { mcp_server: "mcp-atlassian", count: randomInt(500, 2000) },
+    { mcp_server: "playwright", count: randomInt(300, 1500) },
+    { mcp_server: "slack-bot", count: randomInt(200, 1200) },
+    { mcp_server: "github", count: randomInt(150, 1000) },
+    { mcp_server: "filesystem", count: randomInt(100, 800) },
+    { mcp_server: "postgres", count: randomInt(80, 600) },
+    { mcp_server: "google-drive", count: randomInt(60, 500) },
+    { mcp_server: "fetch", count: randomInt(40, 400) },
+    { mcp_server: "memory", count: randomInt(30, 300) },
+    { mcp_server: "sequential-thinking", count: randomInt(20, 200) },
+  ];
 }

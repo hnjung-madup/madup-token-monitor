@@ -11,8 +11,8 @@ pub mod watcher;
 
 // ============================================================
 // [MODULE MARKER] W4: Supabase 집계 업로드 모듈
-// 아래 주석 아래에 mod aggregator; 추가
 // ============================================================
+pub mod aggregator;
 
 // ============================================================
 // [MODULE MARKER] W5: 시스템 트레이 + 자동 업데이트
@@ -29,6 +29,7 @@ fn greet(name: &str) -> String {
 // invoke_handler에 해당 커맨드 추가 필요
 // ============================================================
 
+use aggregator::sync_aggregates_now;
 use commands::{get_heatmap, get_summary, get_timeseries, get_top_mcp, get_top_plugins};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -40,6 +41,7 @@ pub fn run() {
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec![]),
         ))
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
@@ -49,8 +51,8 @@ pub fn run() {
             get_top_mcp,
             get_top_plugins,
             get_heatmap,
+            sync_aggregates_now,
         ])
-        // [HANDLER MARKER] W4: W4 커맨드 추가
         .setup(|app| {
             tray::setup_tray(app.handle())?;
             Ok(())

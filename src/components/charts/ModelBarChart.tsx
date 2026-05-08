@@ -1,15 +1,15 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { ModelUsage } from "@/mocks/usageMock";
+import type { ModelSummary } from "@/types/models";
 import { formatTokens } from "@/lib/format";
 
 interface Props {
-  data: ModelUsage[];
+  data: ModelSummary[];
 }
 
 export function ModelBarChart({ data }: Props) {
   const chartData = data.map((d) => ({
     model: d.model.replace("claude-", "").replace(/-\d.*/, ""),
-    tokens: d.tokens,
+    tokens: d.input_tokens + d.output_tokens,
   }));
 
   return (
