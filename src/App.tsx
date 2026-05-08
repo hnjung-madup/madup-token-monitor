@@ -13,47 +13,124 @@ import Login from "@/pages/Login";
 import Profile from "@/pages/Profile";
 import { AuthGuard } from "@/lib/AuthGuard";
 import { handleAuthCallback } from "@/lib/auth";
-
-// [ROUTING MARKER] W3: Dashboard, MCP 페이지 라우트는 이미 등록됨
-// [ROUTING MARKER] W4: Login, Profile 라우트 추가됨
-// [ROUTING MARKER] W5: 채팅 라우트 이미 등록됨
+import { signOut } from "@/lib/supabase";
+import { useAuthUser } from "@/hooks/useAuthUser";
+import { Avatar } from "@/components/Avatar";
 
 const queryClient = new QueryClient();
 
 const NAV_ITEMS = [
-  { path: "/", label: "nav.dashboard", icon: "📊" },
-  { path: "/mcp", label: "nav.mcp", icon: "🔌" },
-  { path: "/leaderboard", label: "nav.leaderboard", icon: "🏆" },
-  { path: "/chat", label: "nav.chat", icon: "💬" },
-  { path: "/settings", label: "nav.settings", icon: "⚙️" },
+  { path: "/", label: "nav.dashboard" },
+  { path: "/mcp", label: "nav.mcp" },
+  { path: "/leaderboard", label: "nav.leaderboard" },
+  { path: "/chat", label: "nav.chat" },
+  { path: "/settings", label: "nav.settings" },
 ] as const;
+
+function MadupMark({ size = 28 }: { size?: number }) {
+  return (
+    <img
+      src="/madup-favicon.png"
+      alt="Madup"
+      width={size}
+      height={size}
+      className="shrink-0"
+    />
+  );
+}
+
+function UtilityStrip() {
+  const navigate = useNavigate();
+  const { user } = useAuthUser();
+
+  async function handleSignOut() {
+    await signOut();
+    navigate("/login", { replace: true });
+  }
+
+  return (
+    <div className="hp-utility-strip flex items-center justify-between">
+      <span className="tracking-[0.16em] uppercase font-bold text-[11px]">
+        Madup · Internal Tool · KR
+      </span>
+      <div className="flex items-center gap-5 text-[12px]">
+        <span className="hidden md:inline text-steel">For Madup Members</span>
+        {user ? (
+          <>
+            <div className="flex items-center gap-2">
+              <Avatar
+                src={user.avatarUrl}
+                name={user.name}
+                size={22}
+                className="ring-1 ring-on-ink/20"
+              />
+              <span className="text-on-ink/85">{user.email}</span>
+            </div>
+            <button
+              onClick={handleSignOut}
+              className="uppercase tracking-[0.12em] font-semibold hover:text-primary-bright transition-colors"
+            >
+              Sign out
+            </button>
+          </>
+        ) : (
+          <span className="text-steel">Not signed in</span>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function Sidebar() {
   const { t } = useTranslation();
   return (
-    <aside className="w-56 shrink-0 border-r bg-sidebar flex flex-col h-screen">
-      <div className="px-4 py-5 font-bold text-base tracking-tight border-b">
-        매드업 토큰 모니터
+    <aside className="w-60 shrink-0 border-r border-hairline bg-canvas flex flex-col">
+      <div className="px-6 pt-7 pb-6 border-b border-hairline">
+        <div className="flex items-center gap-2.5">
+          <MadupMark size={32} />
+          <div>
+            <p className="hp-display-xs leading-none text-ink">madup</p>
+            <p className="text-[10px] tracking-[0.18em] uppercase font-bold text-graphite mt-1">
+              Token Monitor
+            </p>
+          </div>
+        </div>
       </div>
-      <nav className="flex-1 px-2 py-3 space-y-0.5">
+
+      <nav className="flex-1 px-4 py-6 flex flex-col gap-0.5">
+        <p className="px-3 mb-2 text-[10px] tracking-[0.18em] uppercase font-bold text-graphite">
+          Workspace
+        </p>
         {NAV_ITEMS.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
             end={item.path === "/"}
             className={({ isActive }) =>
-              `flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors ${
+              `relative flex items-center px-3 py-2.5 text-[14px] font-medium transition-colors rounded-md ${
                 isActive
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent/60"
+                  ? "text-ink bg-cloud"
+                  : "text-charcoal hover:text-ink hover:bg-cloud/60"
               }`
             }
           >
-            <span>{item.icon}</span>
-            <span>{t(item.label)}</span>
+            {({ isActive }) => (
+              <>
+                {isActive && (
+                  <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-primary rounded-full" />
+                )}
+                <span className="ml-1">{t(item.label)}</span>
+              </>
+            )}
           </NavLink>
         ))}
       </nav>
+
+      <div className="px-6 py-4 border-t border-hairline">
+        <p className="text-[11px] text-graphite leading-relaxed">
+          v0.1.0 · 로컬 데이터는<br />이 디바이스에만 저장됩니다.
+        </p>
+      </div>
     </aside>
   );
 }
@@ -61,18 +138,21 @@ function Sidebar() {
 function Layout() {
   return (
     <AuthGuard>
-      <div className="flex h-screen overflow-hidden">
-        <Sidebar />
-        <main className="flex-1 overflow-y-auto bg-background">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/mcp" element={<MCP />} />
-            <Route path="/leaderboard" element={<Leaderboard />} />
-            <Route path="/chat" element={<Chat />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/settings/profile" element={<Profile />} />
-          </Routes>
-        </main>
+      <div className="flex flex-col h-screen overflow-hidden bg-canvas">
+        <UtilityStrip />
+        <div className="flex flex-1 overflow-hidden">
+          <Sidebar />
+          <main className="flex-1 overflow-y-auto bg-cloud">
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/mcp" element={<MCP />} />
+              <Route path="/leaderboard" element={<Leaderboard />} />
+              <Route path="/chat" element={<Chat />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/settings/profile" element={<Profile />} />
+            </Routes>
+          </main>
+        </div>
       </div>
     </AuthGuard>
   );
@@ -89,21 +169,15 @@ function DeepLinkBridge() {
       if (ok) navigate("/", { replace: true });
     }
 
-    // App 시작 시점에 deep-link로 launch된 경우 buffer에 URL이 들어있음
     getCurrent()
       .then((urls) => processUrl(urls?.[0]))
-      .catch(() => {
-        // dev 모드에서 deep-link 미등록 — 무시
-      });
+      .catch(() => {});
 
-    // App 실행 중 들어오는 후속 deep-link
     onOpenUrl((urls) => processUrl(urls?.[0]))
       .then((u) => {
         unlisten = u;
       })
-      .catch(() => {
-        // dev 모드에서 deep-link 미등록 — 무시
-      });
+      .catch(() => {});
 
     return () => unlisten?.();
   }, [navigate]);

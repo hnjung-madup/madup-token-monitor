@@ -1,5 +1,3 @@
-// MVP에서는 @멘션 자동완성을 간단하게 구현합니다.
-// 실제 팀원 목록은 Supabase auth.users에서 가져옵니다.
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabase";
 
@@ -22,7 +20,6 @@ export function MentionAutocomplete({ query, onSelect, onClose }: Props) {
 
   useEffect(() => {
     async function fetchUsers() {
-      // Requires a public profiles view or RPC — gracefully degrades if not set up
       const { data } = await supabase
         .from("profiles")
         .select("id, email, name")
@@ -58,19 +55,19 @@ export function MentionAutocomplete({ query, onSelect, onClose }: Props) {
   return (
     <div
       ref={ref}
-      className="absolute bottom-full left-0 mb-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-50 min-w-48"
+      className="absolute bottom-full left-0 mb-1 bg-canvas border border-hairline rounded-md shadow-[0_8px_24px_rgba(26,26,26,0.12)] overflow-hidden z-50 min-w-52"
     >
       {users.map((u, i) => (
         <button
           key={u.id}
           type="button"
           onClick={() => onSelect(u)}
-          className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors ${
-            i === selected ? "bg-blue-50" : ""
+          className={`w-full text-left px-4 py-2.5 text-[14px] transition-colors ${
+            i === selected ? "bg-cloud" : "hover:bg-cloud"
           }`}
         >
-          <span className="font-medium">{u.name}</span>
-          <span className="text-gray-400 ml-1 text-xs">{u.email}</span>
+          <span className="font-semibold text-ink">{u.name}</span>
+          <span className="text-graphite ml-2 text-[12px]">{u.email}</span>
         </button>
       ))}
     </div>

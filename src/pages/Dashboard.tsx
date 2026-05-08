@@ -1,14 +1,19 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSummary, useTimeseries, useHeatmap } from "@/hooks/useUsage";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DailyBarChart } from "@/components/charts/DailyBarChart";
 import { ToolDonutChart } from "@/components/charts/ToolDonutChart";
 import { ModelBarChart } from "@/components/charts/ModelBarChart";
 import { HeatMap } from "@/components/HeatMap";
-import { formatTokens, formatUSD, formatKRW, formatPercent } from "@/lib/format";
-import type { Range } from "@/types/models";
+import { SegmentedBar } from "@/components/SegmentedBar";
+import {
+  formatTokensCompact,
+  formatUSD,
+  formatKRW,
+  formatPercent,
+  formatRelativeTime,
+} from "@/lib/format";
+import type { Range, Point } from "@/types/models";
 
 const RANGES: { value: Range; label: string }[] = [
   { value: "1d", label: "dashboard.period.today" },
@@ -16,117 +21,375 @@ const RANGES: { value: Range; label: string }[] = [
   { value: "30d", label: "dashboard.period.month" },
 ];
 
+function PillTabs<T extends string>({
+  value,
+  onChange,
+  options,
+}: {
+  value: T;
+  onChange: (v: T) => void;
+  options: { value: T; label: string }[];
+}) {
+  return (
+    <div className="inline-flex items-center gap-1 rounded-full border border-hairline bg-canvas p-1">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          onClick={() => onChange(o.value)}
+          className={`px-3 py-1 text-[12px] font-semibold rounded-full transition-colors ${
+            value === o.value
+              ? "bg-primary text-on-primary"
+              : "text-charcoal hover:bg-cloud"
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Includes cache_read + cache_write since Claude bills/limits count cache reads.
+function aggregateByDay(points: Point[]): { date: string; tokens: number; cost: number }[] {
+  const map = new Map<string, { tokens: number; cost: number }>();
+  for (const p of points) {
+    const key = new Date(p.ts).toISOString().slice(0, 10);
+    const cur = map.get(key) ?? { tokens: 0, cost: 0 };
+    cur.tokens +=
+      p.input_tokens + p.output_tokens + (p.cache_read ?? 0) + (p.cache_write ?? 0);
+    cur.cost += p.cost_usd;
+    map.set(key, cur);
+  }
+  return Array.from(map.entries())
+    .map(([date, v]) => ({ date, ...v }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function pctDiff(a: number, b: number): number {
+  if (b <= 0) return 0;
+  return (a - b) / b;
+}
+
+const DAILY_CARD_LIMIT: Record<Range, number> = { "1d": 1, "7d": 7, "30d": 30 };
+
 export function Dashboard() {
   const { t } = useTranslation();
-  const [range, setRange] = useState<Range>("7d");
+  const [dailyRange, setDailyRange] = useState<Range>("7d");
+  const [dailyMetric, setDailyMetric] = useState<"tokens" | "cost">("tokens");
+  const [dailyView, setDailyView] = useState<"chart" | "list">("list");
 
-  const { data: summary, isLoading: sumLoading } = useSummary(range);
-  const { data: timeseries, isLoading: tsLoading } = useTimeseries(range);
-  const { data: heatmap, isLoading: hmLoading } = useHeatmap(30);
+  const { data: summary30 } = useSummary("30d");
+  const { data: summary7 } = useSummary("7d");
+  const { data: summary1 } = useSummary("1d");
+  const { data: tsDaily } = useTimeseries(dailyRange);
+  const { data: heatmap } = useHeatmap(56);
 
-  const isLoading = sumLoading || tsLoading || hmLoading;
+  const dailyAggregated = useMemo(() => aggregateByDay(tsDaily ?? []), [tsDaily]);
 
-  if (isLoading) {
+  if (!summary1 || !summary7 || !summary30) {
     return (
-      <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
+      <div className="flex items-center justify-center h-64 text-graphite text-sm">
         불러오는 중...
       </div>
     );
   }
 
-  if (!summary) {
-    return (
-      <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
-        {t("dashboard.empty")}
-      </div>
-    );
+  // Sum input + output + cache across the four token columns. Claude rate
+  // limits and cost models count cache reads, so the headline number must too.
+  const sumAll = (s: typeof summary1) =>
+    s.total_input_tokens + s.total_output_tokens + s.total_cache_read + s.total_cache_write;
+
+  const todayTokens = sumAll(summary1);
+  const todayCache = summary1.total_cache_read + summary1.total_cache_write;
+  const todayCost = summary1.total_cost_usd;
+  const weekAvgDailyTokens = sumAll(summary7) / 7;
+  const todayVsWeek = pctDiff(todayTokens, weekAvgDailyTokens);
+
+  const todayMessages = (tsDaily ?? []).filter(
+    (p) => new Date(p.ts).toDateString() === new Date().toDateString(),
+  ).length;
+  const todaySessions = Math.max(1, Math.round(todayMessages / 4));
+
+  // Quota mocks (Claude session/weekly limits not tracked yet)
+  const sessionUsage = Math.min(1, todayTokens / 250_000_000);
+  const weeklyUsage = Math.min(1, sumAll(summary7) / 1_500_000_000);
+  const sessionResetMs = 1 * 3600_000 + 3 * 60_000;
+  const weeklyResetMs = 1 * 86_400_000 + 14 * 3600_000 + 53 * 60_000;
+
+  const week = summary7;
+  const month = summary30;
+
+  const dailyLimit = DAILY_CARD_LIMIT[dailyRange];
+  const dailyRows = dailyAggregated.slice(-dailyLimit);
+
+  function copyDailyToClipboard() {
+    const lines = [
+      ["Date", dailyMetric === "tokens" ? "Tokens" : "Cost (USD)"].join("\t"),
+      ...dailyRows.map((d) =>
+        [d.date, dailyMetric === "tokens" ? d.tokens : d.cost.toFixed(4)].join("\t"),
+      ),
+    ];
+    navigator.clipboard.writeText(lines.join("\n"));
   }
 
-  const totalTokens = summary.total_input_tokens + summary.total_output_tokens;
-  const totalCache = summary.total_cache_read + summary.total_cache_write;
-  const cacheEfficiency = (totalTokens + totalCache) > 0 ? totalCache / (totalTokens + totalCache) : 0;
-  const inputRatio = totalTokens > 0 ? summary.total_input_tokens / totalTokens : 0;
-
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">{t("dashboard.title")}</h1>
-        <Tabs value={range} onValueChange={(v) => setRange(v as Range)}>
-          <TabsList>
-            {RANGES.map((r) => (
-              <TabsTrigger key={r.value} value={r.value}>{t(r.label)}</TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-      </div>
+    <div className="px-8 py-8 space-y-6 max-w-[1200px] mx-auto">
+      {/* HEADER ============================================ */}
+      <header className="flex items-end justify-between flex-wrap gap-4">
+        <div>
+          <p className="hp-eyebrow mb-1.5">Token Insight</p>
+          <h1 className="hp-display-md text-ink">{t("dashboard.title")}</h1>
+        </div>
+      </header>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Card>
-          <CardHeader><CardTitle>{t("dashboard.cards.totalTokens")}</CardTitle></CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{formatTokens(totalTokens)}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              입력 {formatTokens(summary.total_input_tokens)} / 출력 {formatTokens(summary.total_output_tokens)}
+      {/* TODAY CARD ============================================ */}
+      <section className="hp-card-flat shadow-[0_2px_8px_rgba(26,26,26,0.06)] p-7">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-[11px] tracking-[0.18em] uppercase font-bold text-graphite">
+            오늘
+          </p>
+        </div>
+        <div className="flex items-baseline gap-3 flex-wrap">
+          <span className="hp-display-xl text-primary leading-none tabular-nums">
+            {formatTokensCompact(todayTokens)}
+          </span>
+          <span className="hp-body text-graphite">tokens</span>
+        </div>
+        <div className="mt-2 flex items-center gap-2 flex-wrap">
+          <span className="hp-caption text-graphite">
+            {formatTokensCompact(todayCache)} cached
+          </span>
+          {weekAvgDailyTokens > 0 && (
+            <span
+              className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                todayVsWeek >= 0
+                  ? "bg-bloom-rose text-bloom-deep"
+                  : "bg-primary-soft text-primary-deep"
+              }`}
+            >
+              {todayVsWeek >= 0 ? "+" : ""}
+              {(todayVsWeek * 100).toFixed(0)}% vs 7d 평균
+            </span>
+          )}
+        </div>
+
+        <div className="mt-6 grid grid-cols-3 gap-6 pt-5 border-t border-hairline">
+          <div>
+            <p className="hp-caption-sm uppercase tracking-[0.12em] font-bold text-graphite">
+              비용
             </p>
-          </CardContent>
-        </Card>
+            <p className="hp-display-sm text-[#f5a524] mt-1 leading-none">
+              {formatUSD(todayCost)}
+            </p>
+            <p className="hp-caption-sm text-graphite mt-1">{formatKRW(todayCost)}</p>
+          </div>
+          <div>
+            <p className="hp-caption-sm uppercase tracking-[0.12em] font-bold text-graphite">
+              요청
+            </p>
+            <p className="hp-display-sm text-primary mt-1 leading-none">
+              {todayMessages.toLocaleString("ko-KR")}
+            </p>
+            <p className="hp-caption-sm text-graphite mt-1">건</p>
+          </div>
+          <div>
+            <p className="hp-caption-sm uppercase tracking-[0.12em] font-bold text-graphite">
+              세션
+            </p>
+            <p className="hp-display-sm text-primary mt-1 leading-none">
+              {todaySessions}
+            </p>
+            <p className="hp-caption-sm text-graphite mt-1">개</p>
+          </div>
+        </div>
+      </section>
 
-        <Card>
-          <CardHeader><CardTitle>{t("dashboard.cards.totalCost")}</CardTitle></CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{formatUSD(summary.total_cost_usd)}</p>
-            <p className="text-xs text-muted-foreground mt-1">{formatKRW(summary.total_cost_usd)}</p>
-          </CardContent>
-        </Card>
+      {/* USAGE QUOTA CARD ============================================ */}
+      <section className="hp-card-flat shadow-[0_2px_8px_rgba(26,26,26,0.06)] p-7">
+        <div className="flex items-center justify-between mb-5">
+          <p className="text-[11px] tracking-[0.18em] uppercase font-bold text-graphite">
+            사용량 한도
+          </p>
+          <span className="text-[11px] text-graphite">Claude 구독 기준 (모의)</span>
+        </div>
 
-        <Card>
-          <CardHeader><CardTitle>{t("dashboard.cards.inputOutput")}</CardTitle></CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{formatPercent(inputRatio)}</p>
-            <p className="text-xs text-muted-foreground mt-1">입력 토큰 비중</p>
-          </CardContent>
-        </Card>
+        <div className="space-y-5">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="hp-body-emphasis text-ink">세션 (5h)</p>
+              <div className="flex items-center gap-3">
+                <span className="hp-caption text-graphite">
+                  Resets in {formatRelativeTime(sessionResetMs)}
+                </span>
+                <span
+                  className="text-[14px] font-bold tabular-nums text-[#f5a524]"
+                >
+                  {(sessionUsage * 100).toFixed(1)}%
+                </span>
+              </div>
+            </div>
+            <SegmentedBar value={sessionUsage} segments={12} color="amber" />
+          </div>
 
-        <Card>
-          <CardHeader><CardTitle>{t("dashboard.cards.cacheEfficiency")}</CardTitle></CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{formatPercent(cacheEfficiency)}</p>
-            <p className="text-xs text-muted-foreground mt-1">{formatTokens(totalCache)} 캐시</p>
-          </CardContent>
-        </Card>
-      </div>
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="hp-body-emphasis text-ink">주간 한도</p>
+              <div className="flex items-center gap-3">
+                <span className="hp-caption text-graphite">
+                  Resets in {formatRelativeTime(weeklyResetMs)}
+                </span>
+                <span
+                  className="text-[14px] font-bold tabular-nums text-[#f5a524]"
+                >
+                  {(weeklyUsage * 100).toFixed(1)}%
+                </span>
+              </div>
+            </div>
+            <SegmentedBar value={weeklyUsage} segments={12} color="amber" />
+          </div>
+        </div>
+      </section>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader><CardTitle>{t("dashboard.charts.dailyTokens")}</CardTitle></CardHeader>
-          <CardContent>
-            <DailyBarChart data={timeseries ?? []} />
-          </CardContent>
-        </Card>
+      {/* DAILY CARD ============================================ */}
+      <section className="hp-card-flat shadow-[0_2px_8px_rgba(26,26,26,0.06)] p-7">
+        <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
+          <p className="text-[11px] tracking-[0.18em] uppercase font-bold text-graphite">
+            일자별
+            <span className="ml-2 text-graphite">
+              ({dailyRange === "1d" ? "1일" : dailyRange === "7d" ? "7일" : "30일"})
+            </span>
+          </p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <PillTabs
+              value={dailyRange}
+              onChange={setDailyRange}
+              options={RANGES.map((r) => ({ value: r.value, label: t(r.label) }))}
+            />
+            <PillTabs
+              value={dailyMetric}
+              onChange={setDailyMetric}
+              options={[
+                { value: "tokens", label: "Tokens" },
+                { value: "cost", label: "Cost" },
+              ]}
+            />
+            <PillTabs
+              value={dailyView}
+              onChange={setDailyView}
+              options={[
+                { value: "chart", label: "Chart" },
+                { value: "list", label: "List" },
+              ]}
+            />
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader><CardTitle>{t("dashboard.charts.toolCost")}</CardTitle></CardHeader>
-          <CardContent>
-            <ToolDonutChart data={summary.by_source} />
-          </CardContent>
-        </Card>
-      </div>
+        {dailyView === "chart" ? (
+          <DailyBarChart data={tsDaily ?? []} />
+        ) : (
+          <div className="divide-y divide-hairline max-h-[420px] overflow-y-auto">
+            {dailyRows.length === 0 ? (
+              <p className="hp-caption text-graphite py-4 text-center">
+                {t("dashboard.empty")}
+              </p>
+            ) : (
+              dailyRows.map((d) => {
+                const value = dailyMetric === "tokens" ? d.tokens : d.cost;
+                const empty = value === 0;
+                return (
+                  <div
+                    key={d.date}
+                    className={`flex items-center justify-between py-2.5 px-2 ${
+                      empty ? "opacity-50" : ""
+                    }`}
+                  >
+                    <span className="hp-caption font-mono text-charcoal">{d.date}</span>
+                    <span
+                      className={`text-[15px] font-bold tabular-nums ${
+                        empty ? "text-graphite" : "text-primary"
+                      }`}
+                    >
+                      {empty
+                        ? "—"
+                        : dailyMetric === "tokens"
+                          ? formatTokensCompact(d.tokens)
+                          : formatUSD(d.cost)}
+                    </span>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader><CardTitle>{t("dashboard.charts.modelUsage")}</CardTitle></CardHeader>
-          <CardContent>
-            <ModelBarChart data={summary.by_model} />
-          </CardContent>
-        </Card>
+        <div className="flex justify-end mt-5">
+          <button onClick={copyDailyToClipboard} className="hp-btn-ink !h-10 !px-5">
+            Copy
+          </button>
+        </div>
+      </section>
 
-        <Card>
-          <CardHeader><CardTitle>{t("dashboard.charts.activityHeatmap")}</CardTitle></CardHeader>
-          <CardContent>
-            <HeatMap data={heatmap ?? []} />
-          </CardContent>
-        </Card>
-      </div>
+      {/* THIS WEEK / THIS MONTH ============================================ */}
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="hp-card-flat shadow-[0_2px_8px_rgba(26,26,26,0.06)] p-6">
+          <p className="text-[11px] tracking-[0.18em] uppercase font-bold text-graphite mb-2">
+            이번 주
+          </p>
+          <p className="hp-display-lg text-primary leading-none tabular-nums">
+            {formatTokensCompact(sumAll(week))}
+          </p>
+          <p className="hp-caption text-graphite mt-2">
+            {formatTokensCompact(week.total_cache_read + week.total_cache_write)} cached
+          </p>
+          <p className="hp-caption text-charcoal mt-1">
+            {formatUSD(week.total_cost_usd)} · {formatPercent(
+              week.total_input_tokens / Math.max(1, sumAll(week))
+            )} 입력
+          </p>
+        </div>
+
+        <div className="hp-card-flat shadow-[0_2px_8px_rgba(26,26,26,0.06)] p-6">
+          <p className="text-[11px] tracking-[0.18em] uppercase font-bold text-graphite mb-2">
+            이번 달
+          </p>
+          <p className="hp-display-lg text-primary leading-none tabular-nums">
+            {formatTokensCompact(sumAll(month))}
+          </p>
+          <p className="hp-caption text-graphite mt-2">
+            {formatTokensCompact(month.total_cache_read + month.total_cache_write)} cached
+          </p>
+          <p className="hp-caption text-charcoal mt-1">
+            {formatUSD(month.total_cost_usd)} · {formatPercent(
+              month.total_input_tokens / Math.max(1, sumAll(month))
+            )} 입력
+          </p>
+        </div>
+      </section>
+
+      {/* ACTIVITY 8 WEEKS ============================================ */}
+      <section className="hp-card-flat shadow-[0_2px_8px_rgba(26,26,26,0.06)] p-7">
+        <p className="text-[11px] tracking-[0.18em] uppercase font-bold text-graphite mb-4">
+          활동 (8주)
+        </p>
+        <HeatMap data={heatmap ?? []} weeks={8} />
+      </section>
+
+      {/* SECONDARY: TOOL / MODEL ============================================ */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="hp-card-flat shadow-[0_2px_8px_rgba(26,26,26,0.06)] p-6">
+          <p className="text-[11px] tracking-[0.18em] uppercase font-bold text-graphite mb-3">
+            {t("dashboard.charts.toolCost")}
+          </p>
+          <ToolDonutChart data={summary7.by_source} />
+        </div>
+        <div className="hp-card-flat shadow-[0_2px_8px_rgba(26,26,26,0.06)] p-6">
+          <p className="text-[11px] tracking-[0.18em] uppercase font-bold text-graphite mb-3">
+            {t("dashboard.charts.modelUsage")}
+          </p>
+          <ModelBarChart data={summary7.by_model} />
+        </div>
+      </section>
+
     </div>
   );
 }

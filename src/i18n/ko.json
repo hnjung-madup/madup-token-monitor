@@ -2,7 +2,10 @@
   "nav": {
     "dashboard": "대시보드",
     "mcp": "MCP 분석",
-    "plugins": "플러그인"
+    "plugins": "플러그인",
+    "leaderboard": "사내 리더보드",
+    "chat": "팀 채팅",
+    "settings": "설정"
   },
   "dashboard": {
     "title": "토큰 사용 현황",
@@ -43,5 +46,23 @@
     "activeSince": "활성화",
     "totalCalls": "총 호출 수",
     "empty": "활성 플러그인이 없습니다"
+  },
+  "leaderboard": {
+    "title": "사내 리더보드",
+    "subtitle": "최근 30일 토큰 사용량 순위",
+    "you": "나",
+    "messages": "메시지",
+    "rank": "순위",
+    "user": "사용자"
+  },
+  "chat": {
+    "title": "팀 채팅",
+    "channels": "채널"
+  },
+  "settings": {
+    "title": "설정",
+    "account": "계정",
+    "dataPolicy": "데이터 정책",
+    "appInfo": "앱 정보"
   }
 }

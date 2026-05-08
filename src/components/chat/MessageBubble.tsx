@@ -1,8 +1,10 @@
 import type { Message } from "../../hooks/useMessages";
+import { Avatar } from "../Avatar";
 
 interface Props {
   message: Message;
   isMine: boolean;
+  myAvatarUrl?: string | null;
   onDelete?: (id: string) => void;
 }
 
@@ -11,50 +13,54 @@ function formatTime(iso: string): string {
   return d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
 }
 
-export function MessageBubble({ message, isMine, onDelete }: Props) {
-  const displayName =
-    message.user_name ?? message.user_email.split("@")[0];
+export function MessageBubble({ message, isMine, myAvatarUrl, onDelete }: Props) {
+  const displayName = message.user_name ?? message.user_email.split("@")[0];
+  const avatarUrl = isMine ? myAvatarUrl ?? null : null;
 
   return (
-    <div
-      className={`flex gap-2 mb-3 ${isMine ? "flex-row-reverse" : "flex-row"}`}
-    >
-      <div
-        className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+    <div className={`flex gap-3 mb-4 ${isMine ? "flex-row-reverse" : "flex-row"}`}>
+      <Avatar
+        src={avatarUrl}
+        name={displayName}
+        size={36}
+        rounded="md"
         title={message.user_email}
-      >
-        {displayName.charAt(0).toUpperCase()}
-      </div>
+      />
       <div className={`max-w-[70%] ${isMine ? "items-end" : "items-start"} flex flex-col`}>
-        {!isMine && (
-          <span className="text-xs text-gray-500 mb-1">{displayName}</span>
-        )}
+        <span className="text-[12px] font-semibold text-charcoal mb-1 flex items-center gap-1">
+          {displayName}
+          {isMine && (
+            <span className="text-[9px] tracking-[0.16em] uppercase font-bold text-primary px-1 py-0.5 rounded bg-primary-soft">
+              나
+            </span>
+          )}
+        </span>
         <div
-          className={`px-3 py-2 rounded-2xl text-sm break-words whitespace-pre-wrap ${
+          className={`px-4 py-2.5 rounded-lg text-[14px] break-words whitespace-pre-wrap leading-relaxed ${
             isMine
-              ? "bg-blue-500 text-white rounded-tr-sm"
-              : "bg-gray-100 text-gray-900 rounded-tl-sm"
+              ? "bg-primary text-on-primary rounded-tr-[2px]"
+              : "bg-cloud text-ink rounded-tl-[2px] border border-hairline"
           }`}
         >
           {message.image_url && (
             <img
               src={message.image_url}
               alt="첨부 이미지"
-              className="max-w-full rounded-lg mb-1"
+              className="max-w-full rounded-md mb-1"
               style={{ maxHeight: 240 }}
             />
           )}
           {message.body}
         </div>
-        <div className="flex items-center gap-1 mt-1">
-          <span className="text-xs text-gray-400">{formatTime(message.created_at)}</span>
+        <div className="flex items-center gap-2 mt-1">
+          <span className="text-[11px] text-graphite">{formatTime(message.created_at)}</span>
           {isMine && onDelete && (
             <button
               onClick={() => onDelete(message.id)}
-              className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+              className="text-[11px] text-graphite hover:text-bloom-deep transition-colors"
               title="삭제"
             >
-              ×
+              삭제
             </button>
           )}
         </div>

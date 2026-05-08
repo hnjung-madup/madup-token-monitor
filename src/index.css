@@ -1,71 +1,432 @@
 @import "pretendard/dist/web/static/pretendard.css";
 @import "tailwindcss";
 
+/*
+  HP Inspired design tokens — DESIGN.md (alpha)
+  Single accent (Electric Blue #024ad8) + ink (#1a1a1a) on white canvas.
+  Typography: Pretendard for Korean (Forma DJR Micro fallback chain), weights 400/500/600/700.
+*/
+
+@theme inline {
+  /* Brand & accent */
+  --color-primary: #024ad8;
+  --color-primary-bright: #296ef9;
+  --color-primary-deep: #0e3191;
+  --color-primary-soft: #c9e0fc;
+  --color-on-primary: #ffffff;
+
+  /* Ink (text on light surfaces) */
+  --color-ink: #1a1a1a;
+  --color-ink-deep: #000000;
+  --color-ink-soft: #292929;
+  --color-on-ink: #ffffff;
+  --color-charcoal: #3d3d3d;
+  --color-graphite: #636363;
+
+  /* Surfaces */
+  --color-canvas: #ffffff;
+  --color-paper: #ffffff;
+  --color-cloud: #f7f7f7;
+  --color-fog: #e8e8e8;
+  --color-steel: #c2c2c2;
+  --color-hairline: #e8e8e8;
+  --color-hairline-strong: #c2c2c2;
+
+  /* Bloom (sale / destructive) */
+  --color-bloom-coral: #ff5050;
+  --color-bloom-rose: #f9d4d2;
+  --color-bloom-deep: #b3262b;
+  --color-bloom-wine: #5a1313;
+
+  /* Storm (printer-plan accents) */
+  --color-storm-mist: #8ebdce;
+  --color-storm-sea: #7fadbe;
+  --color-storm-deep: #356373;
+
+  /* Compatibility shims for legacy class names */
+  --color-background: #ffffff;
+  --color-foreground: #1a1a1a;
+  --color-card: #ffffff;
+  --color-card-foreground: #1a1a1a;
+  --color-muted: #f7f7f7;
+  --color-muted-foreground: #636363;
+  --color-border: #e8e8e8;
+  --color-input: #e8e8e8;
+  --color-secondary: #1a1a1a;
+  --color-accent: #c9e0fc;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #1a1a1a;
+  --color-destructive: #b3262b;
+  --color-sidebar: #ffffff;
+  --color-sidebar-foreground: #1a1a1a;
+  --color-sidebar-accent: #f7f7f7;
+  --color-sidebar-accent-foreground: #024ad8;
+
+  /* Radius scale (DESIGN.md rounded.*) */
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --radius-xl: 16px;
+  --radius-pill: 9999px;
+
+  /* Spacing additions on top of Tailwind defaults */
+  --spacing-section: 80px;
+
+  /* Shadows */
+  --shadow-soft-lift: 0 2px 8px rgba(26, 26, 26, 0.08);
+  --shadow-floating: 0 8px 24px rgba(26, 26, 26, 0.12);
+}
+
 @layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --sidebar: 210 20% 98%;
-    --sidebar-foreground: 222.2 47.4% 11.2%;
-    --sidebar-accent: 210 40% 93%;
-    --sidebar-accent-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --border: 214.3 31.8% 91.4%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --radius: 0.5rem;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --sidebar: 217 33% 10%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-accent: 217 33% 17%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --border: 217.2 32.6% 17.5%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-  }
-
   * {
-    border-color: hsl(var(--border));
+    border-color: var(--color-hairline);
+  }
+
+  html,
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
   }
 
   body {
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
-    font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
-      system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: "Pretendard Variable", Pretendard, "Forma DJR Micro", Inter,
+      -apple-system, BlinkMacSystemFont, system-ui, "Helvetica Neue", Arial,
+      "Noto Sans KR", sans-serif;
+    font-feature-settings: "ss01", "ss02";
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    line-height: 1.4;
+  }
+
+  ::selection {
+    background-color: var(--color-primary-soft);
+    color: var(--color-ink);
   }
 }
 
-@theme inline {
-  --color-background: hsl(var(--background));
-  --color-foreground: hsl(var(--foreground));
-  --color-sidebar: hsl(var(--sidebar));
-  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
-  --color-sidebar-accent: hsl(var(--sidebar-accent));
-  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
-  --color-muted: hsl(var(--muted));
-  --color-muted-foreground: hsl(var(--muted-foreground));
-  --color-border: hsl(var(--border));
-  --color-card: hsl(var(--card));
-  --color-card-foreground: hsl(var(--card-foreground));
-  --color-primary: hsl(var(--primary));
-  --color-primary-foreground: hsl(var(--primary-foreground));
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
+/* ========================================================================
+   HP typography utilities — direct mapping to DESIGN.md typography tokens.
+   Use display-* for headlines, body-* for paragraphs, button-* for CTAs.
+   ======================================================================== */
+
+@utility hp-display-xxl {
+  font-size: 72px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+@utility hp-display-xl {
+  font-size: 56px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+@utility hp-display-lg {
+  font-size: 44px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.005em;
+}
+@utility hp-display-md {
+  font-size: 32px;
+  font-weight: 500;
+  line-height: 1;
+}
+@utility hp-display-sm {
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1.17;
+}
+@utility hp-display-xs {
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1;
+}
+@utility hp-body-lg {
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.33;
+}
+@utility hp-body {
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+@utility hp-body-emphasis {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+@utility hp-caption {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+@utility hp-caption-bold {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+@utility hp-caption-sm {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.33;
+}
+@utility hp-button-label {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+}
+@utility hp-button-label-sm {
+  font-size: 12.6px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.126px;
+  text-transform: uppercase;
+}
+@utility hp-price {
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1.17;
+}
+
+/* ========================================================================
+   Component utilities — re-usable HP component skins.
+   ======================================================================== */
+
+@utility hp-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 24px;
+  border-radius: 4px;
+  background-color: var(--color-primary);
+  color: var(--color-on-primary);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  transition: background-color 150ms ease;
+  cursor: pointer;
+}
+@utility hp-btn-primary {
+  &:hover {
+    background-color: var(--color-primary-bright);
+  }
+  &:active {
+    background-color: var(--color-primary-deep);
+  }
+  &:disabled {
+    background-color: var(--color-steel);
+    cursor: not-allowed;
+  }
+}
+
+@utility hp-btn-ink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 24px;
+  border-radius: 4px;
+  background-color: var(--color-ink);
+  color: var(--color-on-ink);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  transition: background-color 150ms ease;
+  cursor: pointer;
+}
+@utility hp-btn-ink {
+  &:hover {
+    background-color: var(--color-ink-soft);
+  }
+  &:disabled {
+    background-color: var(--color-steel);
+    cursor: not-allowed;
+  }
+}
+
+@utility hp-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 24px;
+  border-radius: 4px;
+  background-color: var(--color-canvas);
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  transition: all 150ms ease;
+  cursor: pointer;
+}
+@utility hp-btn-outline {
+  &:hover {
+    background-color: var(--color-primary-soft);
+  }
+  &:disabled {
+    color: var(--color-steel);
+    border-color: var(--color-steel);
+    cursor: not-allowed;
+  }
+}
+
+@utility hp-btn-outline-ink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 24px;
+  border-radius: 4px;
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  border: 1px solid var(--color-ink);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  transition: all 150ms ease;
+  cursor: pointer;
+}
+@utility hp-btn-outline-ink {
+  &:hover {
+    background-color: var(--color-cloud);
+  }
+}
+
+@utility hp-card {
+  background-color: var(--color-canvas);
+  border-radius: 16px;
+  border: 1px solid var(--color-hairline);
+  box-shadow: 0 2px 8px rgba(26, 26, 26, 0.06);
+}
+
+@utility hp-card-flat {
+  background-color: var(--color-canvas);
+  border-radius: 16px;
+  border: 1px solid var(--color-hairline);
+}
+
+@utility hp-card-cloud {
+  background-color: var(--color-cloud);
+  border-radius: 16px;
+  border: 1px solid transparent;
+}
+
+@utility hp-card-ink {
+  background-color: var(--color-ink);
+  color: var(--color-on-ink);
+  border-radius: 16px;
+}
+
+@utility hp-input {
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 4px;
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  border: 1px solid var(--color-steel);
+  font-size: 16px;
+  transition: border-color 150ms ease;
+  outline: none;
+}
+@utility hp-input {
+  &:focus {
+    border-color: var(--color-ink);
+  }
+  &::placeholder {
+    color: var(--color-graphite);
+  }
+}
+
+@utility hp-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 20px;
+  border-radius: 9999px;
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  border: 1px solid var(--color-hairline);
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 150ms ease;
+  cursor: pointer;
+}
+@utility hp-pill {
+  &:hover {
+    border-color: var(--color-ink);
+  }
+}
+
+@utility hp-pill-active {
+  background-color: var(--color-ink);
+  color: var(--color-on-ink);
+  border-color: var(--color-ink);
+}
+
+@utility hp-badge-coral {
+  display: inline-flex;
+  padding: 4px 8px;
+  border-radius: 3px;
+  background-color: var(--color-bloom-coral);
+  color: var(--color-on-primary);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+@utility hp-badge-soft {
+  display: inline-flex;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background-color: var(--color-primary-soft);
+  color: var(--color-primary-deep);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+@utility hp-utility-strip {
+  height: 36px;
+  padding: 0 24px;
+  background-color: var(--color-ink);
+  color: var(--color-on-ink);
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+}
+
+/* HP chevron decoration — angular blue parallelograms anchoring hero bands. */
+@utility hp-chevron {
+  background-color: var(--color-primary);
+  transform: skewX(-18deg);
+  border-radius: 0;
+}
+
+@utility hp-eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--color-primary);
 }

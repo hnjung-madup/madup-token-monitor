@@ -10,66 +10,115 @@ export default function Login() {
     setError(null);
     try {
       await startSlackLogin();
-    } catch (e) {
+    } catch {
       setError("로그인 중 오류가 발생했습니다. 다시 시도해주세요.");
       setLoading(false);
     }
   }
 
   return (
-    <div className="flex h-screen items-center justify-center bg-background">
-      <div className="w-80 rounded-xl border bg-card p-8 shadow-sm flex flex-col items-center gap-6">
-        <div className="text-center">
-          <h1 className="text-xl font-bold tracking-tight">매드업 토큰 모니터</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            @madup.com 계정으로 로그인해주세요
+    <div className="min-h-screen flex flex-col bg-canvas">
+      {/* Utility strip */}
+      <div className="hp-utility-strip flex items-center justify-between">
+        <span className="tracking-[0.16em] uppercase font-bold text-[11px]">
+          Madup · Internal Tool · KR
+        </span>
+        <span className="text-[12px] text-steel">Authentication required</span>
+      </div>
+
+      {/* Hero band */}
+      <main className="flex-1 flex items-center justify-center px-6 py-16 overflow-hidden relative">
+        {/* Chevron decorations on the page edges */}
+        <div
+          aria-hidden
+          className="hidden md:block absolute -left-24 top-1/2 -translate-y-1/2 w-48 h-[420px] hp-chevron opacity-95"
+        />
+        <div
+          aria-hidden
+          className="hidden md:block absolute left-12 top-1/2 -translate-y-1/2 w-12 h-[420px] hp-chevron opacity-60"
+        />
+        <div
+          aria-hidden
+          className="hidden md:block absolute -right-24 top-1/2 -translate-y-1/2 w-48 h-[420px] hp-chevron opacity-95"
+        />
+        <div
+          aria-hidden
+          className="hidden md:block absolute right-12 top-1/2 -translate-y-1/2 w-12 h-[420px] hp-chevron opacity-60"
+        />
+
+        <section className="relative z-10 w-full max-w-md hp-card-flat shadow-[0_2px_8px_rgba(26,26,26,0.06)] p-10">
+          <img
+            src="/madup-favicon.png"
+            alt="Madup"
+            width={48}
+            height={48}
+            className="mb-6"
+          />
+          <p className="hp-eyebrow mb-4">Madup Members Only</p>
+          <h1 className="hp-display-lg text-ink mb-3 leading-none">
+            매드업<br />토큰 모니터
+          </h1>
+          <p className="hp-body text-charcoal mb-8">
+            <span className="font-semibold text-ink">@madup.com</span> 계정으로
+            Slack 인증 후 팀 채팅과 사내 집계 기능을 이용하세요.
+          </p>
+
+          <button
+            onClick={handleLogin}
+            disabled={loading}
+            className="hp-btn-primary w-full"
+          >
+            {loading ? (
+              <>
+                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 100 16v-4l-3 3 3 3v-4a8 8 0 01-8-8z"
+                  />
+                </svg>
+                로그인 중...
+              </>
+            ) : (
+              <>
+                <SlackIcon />
+                Sign in with Slack
+              </>
+            )}
+          </button>
+
+          {error && (
+            <p className="mt-4 hp-caption text-bloom-deep text-center">{error}</p>
+          )}
+
+          <div className="mt-8 pt-6 border-t border-hairline">
+            <p className="hp-caption-sm text-graphite leading-relaxed">
+              외부 브라우저가 열리면 Slack 계정으로 인증한 뒤 자동으로 앱으로
+              돌아옵니다. 원시 토큰 데이터는 이 디바이스를 떠나지 않습니다.
+            </p>
+          </div>
+        </section>
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-ink text-on-ink px-10 py-6">
+        <div className="max-w-[1366px] mx-auto flex items-center justify-between">
+          <p className="text-[11px] tracking-[0.18em] uppercase font-bold text-on-ink/70">
+            © Madup · Token Monitor v0.1.0
+          </p>
+          <p className="hp-caption-sm text-on-ink/60">
+            Local-first · Aggregation is opt-in
           </p>
         </div>
-
-        <button
-          onClick={handleLogin}
-          disabled={loading}
-          className="flex w-full items-center justify-center gap-2.5 rounded-lg bg-[#4A154B] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#3e1040] disabled:opacity-60 transition-colors"
-        >
-          {loading ? (
-            <>
-              <svg
-                className="h-4 w-4 animate-spin"
-                viewBox="0 0 24 24"
-                fill="none"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 100 16v-4l-3 3 3 3v-4a8 8 0 01-8-8z"
-                />
-              </svg>
-              로그인 중...
-            </>
-          ) : (
-            <>
-              <SlackIcon />
-              Slack으로 로그인
-            </>
-          )}
-        </button>
-
-        {error && (
-          <p className="text-xs text-destructive text-center">{error}</p>
-        )}
-
-        <p className="text-xs text-muted-foreground text-center">
-          외부 브라우저가 열리면 Slack 계정으로 인증 후 앱으로 돌아옵니다.
-        </p>
-      </div>
+      </footer>
     </div>
   );
 }

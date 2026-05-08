@@ -1,13 +1,16 @@
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import type { SourceSummary } from "@/types/models";
 import { formatUSD } from "@/lib/format";
+import { tokens } from "@/lib/tokens";
 
-const COLORS = [
-  "hsl(var(--primary))",
-  "hsl(var(--secondary))",
-  "hsl(var(--accent))",
-  "hsl(var(--muted-foreground))",
-];
+// Tone-on-tone palette: primary family (primary → bright → soft → deep).
+const DONUT_PALETTE = [
+  tokens.primary,
+  tokens.primaryBright,
+  tokens.primaryDeep,
+  tokens.primarySoft,
+  tokens.stormSea,
+] as const;
 
 interface Props {
   data: SourceSummary[];
@@ -28,11 +31,20 @@ export function ToolDonutChart({ data }: Props) {
           dataKey="value"
         >
           {chartData.map((_, i) => (
-            <Cell key={i} fill={COLORS[i % COLORS.length]} />
+            <Cell key={i} fill={DONUT_PALETTE[i % DONUT_PALETTE.length]} stroke={tokens.canvas} strokeWidth={2} />
           ))}
         </Pie>
-        <Tooltip formatter={(v) => formatUSD(Number(v))} />
-        <Legend />
+        <Tooltip
+          contentStyle={{
+            borderRadius: 8,
+            border: `1px solid ${tokens.hairline}`,
+            background: tokens.canvas,
+            color: tokens.ink,
+            fontSize: 12,
+          }}
+          formatter={(v) => formatUSD(Number(v))}
+        />
+        <Legend wrapperStyle={{ fontSize: 12, color: tokens.charcoal }} />
       </PieChart>
     </ResponsiveContainer>
   );

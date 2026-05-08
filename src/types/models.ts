@@ -29,6 +29,8 @@ export interface Point {
   ts: number;
   input_tokens: number;
   output_tokens: number;
+  cache_read: number;
+  cache_write: number;
   cost_usd: number;
 }
 
@@ -49,3 +51,13 @@ export interface DayCount {
 }
 
 export type Range = "1d" | "7d" | "30d";
+
+export interface LeaderboardEntry {
+  rank: number;
+  user_id: string;
+  display_name: string;
+  avatar_url: string | null;
+  message_count: number;
+  total_tokens: number;
+  cost_usd: number;
+}

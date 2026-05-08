@@ -100,6 +100,8 @@ pub fn get_timeseries(range: String, source: Option<String>) -> Result<Vec<Point
         "SELECT (ts / 3600000) * 3600000 as bucket,
                 COALESCE(SUM(input_tokens),0),
                 COALESCE(SUM(output_tokens),0),
+                COALESCE(SUM(cache_read),0),
+                COALESCE(SUM(cache_write),0),
                 COALESCE(SUM(cost_usd),0.0)
          FROM usage_events
          WHERE ts BETWEEN ?1 AND ?2 AND source = ?3
@@ -108,6 +110,8 @@ pub fn get_timeseries(range: String, source: Option<String>) -> Result<Vec<Point
         "SELECT (ts / 3600000) * 3600000 as bucket,
                 COALESCE(SUM(input_tokens),0),
                 COALESCE(SUM(output_tokens),0),
+                COALESCE(SUM(cache_read),0),
+                COALESCE(SUM(cache_write),0),
                 COALESCE(SUM(cost_usd),0.0)
          FROM usage_events
          WHERE ts BETWEEN ?1 AND ?2
@@ -121,7 +125,9 @@ pub fn get_timeseries(range: String, source: Option<String>) -> Result<Vec<Point
             ts: row.get(0)?,
             input_tokens: row.get(1)?,
             output_tokens: row.get(2)?,
-            cost_usd: row.get(3)?,
+            cache_read: row.get(3)?,
+            cache_write: row.get(4)?,
+            cost_usd: row.get(5)?,
         })
     };
 

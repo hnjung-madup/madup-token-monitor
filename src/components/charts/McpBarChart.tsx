@@ -1,5 +1,6 @@
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import type { McpUsage } from "@/types/models";
+import { tokens } from "@/lib/tokens";
 
 interface Props {
   data: McpUsage[];
@@ -7,7 +8,7 @@ interface Props {
   color?: string;
 }
 
-export function McpBarChart({ data, avgData, color = "hsl(var(--primary))" }: Props) {
+export function McpBarChart({ data, avgData, color = tokens.primary }: Props) {
   const chartData = data.map((d) => {
     const avg = avgData?.find((a) => a.mcp_server === d.mcp_server);
     return {
@@ -20,14 +21,21 @@ export function McpBarChart({ data, avgData, color = "hsl(var(--primary))" }: Pr
   return (
     <ResponsiveContainer width="100%" height={300}>
       <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-        <XAxis type="number" tick={{ fontSize: 11 }} />
-        <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={100} />
-        <Tooltip />
-        {avgData && <ReferenceLine x={0} stroke="hsl(var(--border))" />}
-        <Bar dataKey="calls" fill={color} radius={[0, 4, 4, 0]} name="내 호출" />
+        <CartesianGrid strokeDasharray="3 3" stroke={tokens.hairline} />
+        <XAxis type="number" tick={{ fontSize: 11, fill: tokens.graphite }} />
+        <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: tokens.charcoal }} width={100} />
+        <Tooltip
+          contentStyle={{
+            borderRadius: 8,
+            border: `1px solid ${tokens.hairline}`,
+            background: tokens.canvas,
+            color: tokens.ink,
+            fontSize: 12,
+          }}
+        />
+        <Bar dataKey="calls" fill={color} radius={[0, 3, 3, 0]} name="내 호출" />
         {avgData && (
-          <Bar dataKey="avg" fill="hsl(var(--muted-foreground))" radius={[0, 4, 4, 0]} name="팀 평균" opacity={0.6} />
+          <Bar dataKey="avg" fill={tokens.primarySoft} radius={[0, 3, 3, 0]} name="팀 평균" />
         )}
       </BarChart>
     </ResponsiveContainer>

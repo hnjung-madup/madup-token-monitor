@@ -1,4 +1,4 @@
-import type { Summary, Point, McpUsage, PluginUsage, DayCount, Range } from "@/types/models";
+import type { Summary, Point, McpUsage, PluginUsage, DayCount, Range, LeaderboardEntry } from "@/types/models";
 
 function randomInt(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -45,7 +45,16 @@ export function buildMockTimeseries(range: Range, _source?: string): Point[] {
     const ts = now - (days * 4 - 1 - i) * 6 * 3_600_000;
     const inp = randomInt(5_000, 60_000);
     const out = randomInt(1_000, 15_000);
-    return { ts, input_tokens: inp, output_tokens: out, cost_usd: (inp * 3 + out * 15) / 1_000_000 };
+    const cr = randomInt(80_000, 400_000);
+    const cw = randomInt(20_000, 100_000);
+    return {
+      ts,
+      input_tokens: inp,
+      output_tokens: out,
+      cache_read: cr,
+      cache_write: cw,
+      cost_usd: (inp * 3 + out * 15 + cr * 0.3) / 1_000_000,
+    };
   });
 }
 
@@ -101,4 +110,42 @@ export function buildMockCompanyTopMcp(): McpUsage[] {
     { mcp_server: "memory", count: randomInt(30, 300) },
     { mcp_server: "sequential-thinking", count: randomInt(20, 200) },
   ];
+}
+
+export function buildMockLeaderboard(myEmail?: string | null): LeaderboardEntry[] {
+  const seeds = [
+    "dokdo2013",
+    "akagaeng",
+    "fivetaku",
+    "shindonghwi",
+    "hoony-studio",
+    "FMan-World",
+    "heesumin-madup",
+    "sharkp08",
+    "andyleeboo",
+    myEmail ? myEmail.split("@")[0] : "hnjung-madup",
+    "jungsooyun",
+    "Byun11",
+    "aldegad",
+    "yujin-park",
+    "mskim-madup",
+  ];
+  const baseTokens = [159_700_000, 123_100_000, 63_500_000, 54_400_000, 51_100_000];
+  return seeds.map((handle, i) => {
+    const tokens =
+      i < baseTokens.length
+        ? baseTokens[i]
+        : Math.max(8_000_000, baseTokens[baseTokens.length - 1] - i * 4_000_000 - randomInt(-2_000_000, 2_000_000));
+    const messages = Math.max(20, Math.round(tokens / randomInt(300_000, 800_000)));
+    const cost = (tokens / 1_000_000) * randomInt(1, 4) + randomInt(0, 30);
+    return {
+      rank: i + 1,
+      user_id: `mock-${i}`,
+      display_name: handle,
+      avatar_url: null,
+      message_count: messages,
+      total_tokens: tokens,
+      cost_usd: Math.round(cost * 100) / 100,
+    };
+  });
 }

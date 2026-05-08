@@ -22,7 +22,10 @@ export function Tabs({ value, onValueChange, className, ...props }: TabsProps) {
 export function TabsList({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("inline-flex h-9 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground", className)}
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full border border-hairline bg-canvas p-1",
+        className,
+      )}
       {...props}
     />
   );
@@ -39,9 +42,11 @@ export function TabsTrigger({ value, className, ...props }: TabsTriggerProps) {
     <button
       onClick={() => ctx.onValueChange(value)}
       className={cn(
-        "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50",
-        active && "bg-background text-foreground shadow",
-        className
+        "inline-flex items-center justify-center whitespace-nowrap rounded-full px-4 py-1.5 text-[13px] font-medium transition-colors focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50",
+        active
+          ? "bg-ink text-on-ink"
+          : "text-charcoal hover:bg-cloud",
+        className,
       )}
       {...props}
     />

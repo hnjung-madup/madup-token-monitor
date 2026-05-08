@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif"];
 
 interface Props {
@@ -18,7 +18,6 @@ async function stripExifAndEncode(file: File): Promise<string> {
         canvas.width = img.naturalWidth;
         canvas.height = img.naturalHeight;
         canvas.getContext("2d")!.drawImage(img, 0, 0);
-        // Re-encode to JPEG strips all EXIF including GPS
         resolve(canvas.toDataURL("image/jpeg", 0.92));
       };
       img.onerror = reject;
@@ -77,13 +76,13 @@ export function MessageInput({ onSend, disabled }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="p-3 border-t border-gray-200 bg-white">
+    <form onSubmit={handleSubmit} className="px-6 py-4 border-t border-hairline bg-canvas">
       {imagePreview && (
-        <div className="relative inline-block mb-2">
+        <div className="relative inline-block mb-3">
           <img
             src={imagePreview}
             alt="미리보기"
-            className="h-20 rounded-lg border border-gray-200"
+            className="h-20 rounded-md border border-hairline"
           />
           <button
             type="button"
@@ -91,26 +90,28 @@ export function MessageInput({ onSend, disabled }: Props) {
               setImagePreview(null);
               if (fileRef.current) fileRef.current.value = "";
             }}
-            className="absolute -top-1 -right-1 w-5 h-5 bg-gray-600 text-white rounded-full text-xs flex items-center justify-center"
+            className="absolute -top-2 -right-2 w-5 h-5 bg-ink text-on-ink rounded-full text-[11px] flex items-center justify-center"
           >
             ×
           </button>
         </div>
       )}
-      {imageError && (
-        <p className="text-xs text-red-500 mb-1">{imageError}</p>
-      )}
-      <div className="flex gap-2 items-end">
+      {imageError && <p className="text-[12px] text-bloom-deep mb-2">{imageError}</p>}
+      <div className="flex gap-3 items-end">
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          className="p-2 text-gray-500 hover:text-blue-500 transition-colors"
+          className="p-2 text-graphite hover:text-primary transition-colors rounded-md"
           title="이미지 첨부"
           disabled={disabled}
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+            />
           </svg>
         </button>
         <input
@@ -128,14 +129,14 @@ export function MessageInput({ onSend, disabled }: Props) {
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="메시지 입력 (Enter 전송, Shift+Enter 줄바꿈)"
-          className="flex-1 resize-none rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 min-h-[40px] max-h-32"
+          className="flex-1 resize-none rounded-md border border-steel px-4 py-2.5 text-[14px] text-ink focus:outline-none focus:border-ink transition-colors min-h-[44px] max-h-32 placeholder:text-graphite"
           rows={1}
           disabled={disabled || sending}
         />
         <button
           type="submit"
           disabled={disabled || sending || (!text.trim() && !imagePreview)}
-          className="px-4 py-2 bg-blue-500 text-white rounded-xl text-sm font-medium hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="hp-btn-primary !h-[44px] !px-6"
         >
           전송
         </button>
