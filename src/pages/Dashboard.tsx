@@ -49,14 +49,15 @@ function PillTabs<T extends string>({
   );
 }
 
-// 사용자가 의도한 토큰만 합산: input + output. cache는 시스템이 자동으로 다시 포함시키는
-// 분량이라 "내 사용량" 직관과 맞지 않음 — cache는 별도 라벨로 보여준다.
+// AI Token Monitor와 동일한 합산: input + output + cache_read + cache_write.
+// cache까지 포함해야 Claude API가 청구하는 진짜 사용량 = "토큰 사용량" 의미와 맞다.
+// (cache는 cards에 별도 라벨로도 표시되어 비교 가능)
 function aggregateByDay(points: Point[]): { date: string; tokens: number; cost: number }[] {
   const map = new Map<string, { tokens: number; cost: number }>();
   for (const p of points) {
     const key = new Date(p.ts).toISOString().slice(0, 10);
     const cur = map.get(key) ?? { tokens: 0, cost: 0 };
-    cur.tokens += p.input_tokens + p.output_tokens;
+    cur.tokens += p.input_tokens + p.output_tokens + (p.cache_read ?? 0) + (p.cache_write ?? 0);
     cur.cost += p.cost_usd;
     map.set(key, cur);
   }
@@ -94,10 +95,14 @@ export function Dashboard() {
     );
   }
 
-  // 사용자가 의도한 토큰 (input + output)만을 메인 숫자로 사용.
-  // cache_read/cache_write는 시스템이 system prompt + history를 매 turn 재포함시키는
-  // 분량이라 "내 사용량" 직관과 맞지 않음 — 별도 라벨로만 표시.
-  const sumIO = (s: typeof summary1) => s.total_input_tokens + s.total_output_tokens;
+  // AI Token Monitor와 동일한 합산: input + output + cache_read + cache_write.
+  // cache는 Claude API가 실제 청구하는 토큰이므로 메인 숫자에 포함.
+  // cache 비중은 별도 라벨로 분리 표시.
+  const sumIO = (s: typeof summary1) =>
+    s.total_input_tokens +
+    s.total_output_tokens +
+    s.total_cache_read +
+    s.total_cache_write;
   const sumCache = (s: typeof summary1) => s.total_cache_read + s.total_cache_write;
 
   const todayTokens = sumIO(summary1);
@@ -111,9 +116,9 @@ export function Dashboard() {
   ).length;
   const todaySessions = Math.max(1, Math.round(todayMessages / 4));
 
-  // Quota mocks (Claude session/weekly limits not tracked yet) — input+output 기준
-  const sessionUsage = Math.min(1, todayTokens / 50_000_000);
-  const weeklyUsage = Math.min(1, sumIO(summary7) / 300_000_000);
+  // Quota mocks (Claude session/weekly limits not tracked yet) — cache 포함 기준
+  const sessionUsage = Math.min(1, todayTokens / 250_000_000);
+  const weeklyUsage = Math.min(1, sumIO(summary7) / 1_500_000_000);
   const sessionResetMs = 1 * 3600_000 + 3 * 60_000;
   const weeklyResetMs = 1 * 86_400_000 + 14 * 3600_000 + 53 * 60_000;
 
