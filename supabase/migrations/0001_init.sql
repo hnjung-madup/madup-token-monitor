@@ -1,8 +1,13 @@
 -- 0001_init.sql: 초기 스키마 생성
 
 -- 매드업 도메인 이메일 검증 함수
+-- search_path 명시: security definer 함수는 정의자의 default를 쓰므로 public을 못 찾을 수 있음
 create or replace function validate_email_domain()
-returns trigger language plpgsql security definer as $$
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
 begin
   if new.email not like '%@madup.com' then
     raise exception 'Only @madup.com email addresses are allowed';
@@ -59,10 +64,15 @@ create table plugin_usage (
 );
 
 -- 신규 유저 가입 시 profiles 자동 생성
+-- public.profiles 명시 + search_path 고정 (SQLSTATE 42P01 "relation profiles does not exist" 방지)
 create or replace function handle_new_user()
-returns trigger language plpgsql security definer as $$
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
 begin
-  insert into profiles (id, email, name, avatar_url)
+  insert into public.profiles (id, email, name, avatar_url)
   values (
     new.id,
     new.email,
