@@ -178,7 +178,7 @@ fn parse_codex_line(
         let input_tokens = usage.get("prompt_tokens").and_then(Value::as_i64);
         let output_tokens = usage.get("completion_tokens").and_then(Value::as_i64);
         let cost_usd = model.as_deref().map(|m| {
-            calc_cost_usd(m, input_tokens.unwrap_or(0), output_tokens.unwrap_or(0), 0, 0)
+            calc_cost_usd(m, input_tokens.unwrap_or(0), output_tokens.unwrap_or(0), 0, 0, 0)
         });
         events.push(UsageEvent {
             id: None,
@@ -224,7 +224,7 @@ fn parse_opencode_line(
             .or_else(|| usage.get("completion_tokens"))
             .and_then(Value::as_i64);
         let cost_usd = model.as_deref().map(|m| {
-            calc_cost_usd(m, input_tokens.unwrap_or(0), output_tokens.unwrap_or(0), 0, 0)
+            calc_cost_usd(m, input_tokens.unwrap_or(0), output_tokens.unwrap_or(0), 0, 0, 0)
         });
         events.push(UsageEvent {
             id: None,
