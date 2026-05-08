@@ -77,6 +77,22 @@ pub fn get_summary(range: String) -> Result<Summary, String> {
         }
     }
 
+    // 메시지 / 세션 카운트는 별도 쿼리
+    let message_count: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM usage_events WHERE ts BETWEEN ?1 AND ?2",
+            params![start, end],
+            |row| row.get(0),
+        )
+        .unwrap_or(0);
+    let session_count: i64 = conn
+        .query_row(
+            "SELECT COUNT(DISTINCT session_id) FROM usage_events WHERE ts BETWEEN ?1 AND ?2 AND session_id IS NOT NULL",
+            params![start, end],
+            |row| row.get(0),
+        )
+        .unwrap_or(0);
+
     let rate = usd_to_krw_rate();
     Ok(Summary {
         total_input_tokens: total_input,
@@ -85,6 +101,8 @@ pub fn get_summary(range: String) -> Result<Summary, String> {
         total_cache_write,
         total_cost_usd: total_cost,
         total_cost_krw: total_cost * rate,
+        message_count,
+        session_count,
         by_source: source_map.into_values().collect(),
         by_model: model_map.into_values().collect(),
     })

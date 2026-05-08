@@ -41,6 +41,10 @@ pub struct Summary {
     pub total_cache_write: i64,
     pub total_cost_usd: f64,
     pub total_cost_krw: f64,
+    /// 응답 메시지 단위 카운트 (assistant message 1건 = 1)
+    pub message_count: i64,
+    /// 고유 session 카운트
+    pub session_count: i64,
     pub by_source: Vec<SourceSummary>,
     pub by_model: Vec<ModelSummary>,
 }

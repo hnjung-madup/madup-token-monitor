@@ -143,10 +143,8 @@ export function Dashboard() {
   const weekAvgDailyTokens = sumIO(summary7) / 7;
   const todayVsWeek = pctDiff(todayTokens, weekAvgDailyTokens);
 
-  const todayMessages = (tsDaily ?? []).filter(
-    (p) => new Date(p.ts).toDateString() === new Date().toDateString(),
-  ).length;
-  const todaySessions = Math.max(1, Math.round(todayMessages / 4));
+  const todayMessages = summary1.message_count;
+  const todaySessions = summary1.session_count;
 
   // OAuth Usage API에서 실제 한도 utilization과 reset 시각을 받음.
   // API 호출 실패 시(미로그인/네트워크) fallback으로 mock 표시.

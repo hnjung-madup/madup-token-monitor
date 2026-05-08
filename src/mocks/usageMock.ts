@@ -25,6 +25,8 @@ export function buildMockSummary(range: Range): Summary {
     total_cache_write: cw,
     total_cost_usd: cost,
     total_cost_krw: cost * 1380,
+    message_count: randomInt(50, 500) * days,
+    session_count: randomInt(1, 5) * days,
     by_source: [
       { source: "claude-code", input_tokens: Math.floor(inp * 0.6), output_tokens: Math.floor(out * 0.6), cost_usd: cost * 0.6 },
       { source: "cursor", input_tokens: Math.floor(inp * 0.25), output_tokens: Math.floor(out * 0.25), cost_usd: cost * 0.25 },

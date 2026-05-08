@@ -7,6 +7,8 @@ export interface Summary {
   total_cache_write: number;
   total_cost_usd: number;
   total_cost_krw: number;
+  message_count: number;
+  session_count: number;
   by_source: SourceSummary[];
   by_model: ModelSummary[];
 }
