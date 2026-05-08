@@ -1,0 +1,47 @@
+{
+  "nav": {
+    "dashboard": "대시보드",
+    "mcp": "MCP 분석",
+    "plugins": "플러그인"
+  },
+  "dashboard": {
+    "title": "토큰 사용 현황",
+    "period": {
+      "today": "오늘",
+      "week": "7일",
+      "month": "30일"
+    },
+    "cards": {
+      "totalTokens": "총 토큰",
+      "totalCost": "총 비용",
+      "inputOutput": "입력/출력 비율",
+      "cacheEfficiency": "캐시 효율"
+    },
+    "charts": {
+      "dailyTokens": "일자별 토큰 사용",
+      "toolCost": "도구별 비용",
+      "modelUsage": "모델별 사용량",
+      "activityHeatmap": "활동 히트맵"
+    },
+    "legend": {
+      "input": "입력",
+      "output": "출력",
+      "cache": "캐시"
+    },
+    "empty": "아직 사용 기록이 없습니다"
+  },
+  "mcp": {
+    "title": "MCP 사용 분석",
+    "myTop10": "내 MCP TOP 10",
+    "teamTop10": "사내 MCP TOP 10",
+    "vsAverage": "평균 대비",
+    "calls": "호출",
+    "empty": "MCP 사용 기록이 없습니다"
+  },
+  "plugins": {
+    "title": "활성 플러그인",
+    "activeSince": "활성화",
+    "totalCalls": "총 호출 수",
+    "empty": "활성 플러그인이 없습니다"
+  }
+}

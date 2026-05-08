@@ -1,0 +1,97 @@
+# 매드업 토큰 모니터
+
+매드업 구성원의 Claude / MCP 토큰 사용량을 로컬에서 추적하고, 선택적으로 팀과 집계하는 데스크톱 앱입니다.
+
+## 소개
+
+- Claude Code / MCP JSONL 로그를 자동으로 파싱해 로컬 SQLite에 저장합니다.
+- 일별/모델별 토큰 사용량 차트와 히트맵을 제공합니다.
+- Slack 로그인 후 팀 채팅과 사내 집계 기능을 사용할 수 있습니다.
+- **모든 원시 데이터는 로컬에만 저장되며, 집계 전송은 옵트인입니다.**
+
+## 설치
+
+[Releases](https://github.com/madup-inc/madup-token-monitor/releases) 페이지에서 최신 버전을 다운로드합니다.
+
+| 플랫폼 | 파일 |
+|--------|------|
+| macOS Apple Silicon | `*_aarch64.dmg` |
+| macOS Intel | `*_x64.dmg` |
+| Windows | `*_x64-setup.exe` |
+
+> 자동 업데이트가 내장되어 있어 새 버전 출시 시 앱 내에서 알림을 받을 수 있습니다.
+> 업데이트 서버 엔드포인트는 사내 배포 시 결정이 필요합니다 — `tauri.conf.json`의 `plugins.updater.endpoints` 참고.
+
+## Slack 연결
+
+1. 앱을 실행하고 우측 상단 **설정** 으로 이동합니다.
+2. **Slack으로 로그인** 버튼을 클릭합니다.
+3. Slack OAuth 인증 후 팀 채팅과 집계 기능이 활성화됩니다.
+
+> Supabase 프로젝트에서 Slack OIDC Provider를 활성화해야 합니다.
+> `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` 환경 변수 설정이 필요합니다.
+
+## 데이터 정책
+
+- 로컬 SQLite 파일 위치: `~/Library/Application Support/madup-token-monitor/data.db` (macOS)
+- **토큰 사용량 집계 전송은 옵트인입니다.** 설정 화면에서 명시적으로 동의한 경우에만 익명화된 통계가 팀 대시보드에 집계됩니다.
+- 원시 로그, 프롬프트, 대화 내용은 절대 전송되지 않습니다.
+- 옵트인 설정은 언제든 설정 화면에서 철회할 수 있습니다.
+
+## 개발 가이드
+
+### 필요 환경
+
+- Node.js 20+
+- pnpm 9+
+- Rust (stable)
+- macOS 또는 Windows
+
+### 로컬 실행
+
+```bash
+# 의존성 설치
+pnpm install
+
+# 환경 변수 설정 (.env.local)
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+
+# 개발 서버 실행
+pnpm tauri dev
+```
+
+### 빌드
+
+```bash
+pnpm tauri build
+```
+
+### Supabase 마이그레이션
+
+```bash
+# supabase CLI 필요
+supabase db push
+```
+
+마이그레이션 파일은 `supabase/migrations/` 에 있습니다:
+
+| 파일 | 내용 |
+|------|------|
+| `0001_*` | 기본 스키마 |
+| `0002_*` | 사용자 프로필 |
+| `0003_*` | 집계 테이블 |
+| `0004_messages.sql` | 팀 채팅 메시지 |
+
+### 자동 업데이트 서버 설정
+
+`tauri.conf.json`의 `plugins.updater.endpoints`를 사내 업데이트 서버 URL로 교체해야 합니다.
+현재는 플레이스홀더가 설정되어 있습니다. Tauri updater 형식:
+
+```
+https://your-update-server.com/updates/{{target}}/{{current_version}}
+```
+
+## 라이선스
+
+MIT License — 자세한 내용은 [LICENSE](LICENSE) 파일을 참고하세요.

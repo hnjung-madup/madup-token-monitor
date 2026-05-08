@@ -1,0 +1,35 @@
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
+import { McpUsage } from "@/mocks/usageMock";
+
+interface Props {
+  data: McpUsage[];
+  avgData?: McpUsage[];
+  color?: string;
+}
+
+export function McpBarChart({ data, avgData, color = "hsl(var(--primary))" }: Props) {
+  const chartData = data.map((d) => {
+    const avg = avgData?.find((a) => a.name === d.name);
+    return {
+      name: d.name.replace("mcp-", ""),
+      calls: d.calls,
+      avg: avg ? Math.round(avg.calls / 10) : undefined,
+    };
+  });
+
+  return (
+    <ResponsiveContainer width="100%" height={300}>
+      <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+        <XAxis type="number" tick={{ fontSize: 11 }} />
+        <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={100} />
+        <Tooltip />
+        {avgData && <ReferenceLine x={0} stroke="hsl(var(--border))" />}
+        <Bar dataKey="calls" fill={color} radius={[0, 4, 4, 0]} name="내 호출" />
+        {avgData && (
+          <Bar dataKey="avg" fill="hsl(var(--muted-foreground))" radius={[0, 4, 4, 0]} name="팀 평균" opacity={0.6} />
+        )}
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
