@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, NavLink, useNavigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { onOpenUrl } from "@tauri-apps/plugin-deep-link";
+import { onOpenUrl, getCurrent } from "@tauri-apps/plugin-deep-link";
 import "@/i18n/index";
 import { Dashboard } from "@/pages/Dashboard";
 import MCP from "@/pages/MCP";
@@ -82,18 +82,29 @@ function DeepLinkBridge() {
   const navigate = useNavigate();
   useEffect(() => {
     let unlisten: (() => void) | undefined;
-    onOpenUrl(async (urls) => {
-      const url = urls?.[0];
+
+    async function processUrl(url: string | null | undefined) {
       if (!url || !url.startsWith("madup-token-monitor://auth/callback")) return;
       const ok = await handleAuthCallback(url);
       if (ok) navigate("/", { replace: true });
-    })
+    }
+
+    // App 시작 시점에 deep-link로 launch된 경우 buffer에 URL이 들어있음
+    getCurrent()
+      .then((urls) => processUrl(urls?.[0]))
+      .catch(() => {
+        // dev 모드에서 deep-link 미등록 — 무시
+      });
+
+    // App 실행 중 들어오는 후속 deep-link
+    onOpenUrl((urls) => processUrl(urls?.[0]))
       .then((u) => {
         unlisten = u;
       })
       .catch(() => {
-        // dev 모드에서 deep-link 미등록 가능 — 빌드 후 정식 동작
+        // dev 모드에서 deep-link 미등록 — 무시
       });
+
     return () => unlisten?.();
   }, [navigate]);
   return null;
