@@ -34,6 +34,9 @@ fn migrate(conn: &Connection) -> Result<()> {
             session_id   TEXT
         );
         CREATE INDEX IF NOT EXISTS idx_usage_ts ON usage_events(ts);
+        -- 중복 INSERT 방지: 동일 session에 같은 ts/model/tokens 조합은 동일 응답
+        CREATE UNIQUE INDEX IF NOT EXISTS uniq_usage_event
+            ON usage_events(source, session_id, ts, model, input_tokens, output_tokens, cache_read, cache_write);
 
         CREATE TABLE IF NOT EXISTS tool_calls (
             id        INTEGER PRIMARY KEY,
@@ -43,13 +46,15 @@ fn migrate(conn: &Connection) -> Result<()> {
             mcp_server TEXT,
             plugin_id TEXT
         );
-        CREATE INDEX IF NOT EXISTS idx_tool_ts ON tool_calls(ts);",
+        CREATE INDEX IF NOT EXISTS idx_tool_ts ON tool_calls(ts);
+        CREATE UNIQUE INDEX IF NOT EXISTS uniq_tool_call
+            ON tool_calls(source, ts, tool_name);",
     )
 }
 
 pub fn insert_usage_event(conn: &Connection, e: &UsageEvent) -> Result<()> {
     conn.execute(
-        "INSERT INTO usage_events
+        "INSERT OR IGNORE INTO usage_events
             (source, model, ts, input_tokens, output_tokens, cache_read, cache_write, cost_usd, project, session_id)
          VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",
         params![
@@ -64,7 +69,7 @@ pub fn insert_usage_event(conn: &Connection, e: &UsageEvent) -> Result<()> {
 
 pub fn insert_tool_call(conn: &Connection, t: &ToolCall) -> Result<()> {
     conn.execute(
-        "INSERT INTO tool_calls (source, ts, tool_name, mcp_server, plugin_id)
+        "INSERT OR IGNORE INTO tool_calls (source, ts, tool_name, mcp_server, plugin_id)
          VALUES (?1,?2,?3,?4,?5)",
         params![t.source, t.ts, t.tool_name, t.mcp_server, t.plugin_id],
     )?;
