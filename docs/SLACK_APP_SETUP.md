@@ -60,10 +60,12 @@ https://<your-supabase-project>.supabase.co/auth/v1/callback
 `.env`:
 ```env
 VITE_SUPABASE_URL=https://<your-supabase-project>.supabase.co
-VITE_SUPABASE_ANON_KEY=<anon-key>
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 ```
 
-> Slack Client ID/Secret은 **Supabase에만** 입력. 앱 측에는 절대 노출 X.
+> Supabase Dashboard → Settings → API 에서 **Publishable key**(`sb_publishable_...`)만 복사. **Secret key**는 절대 넣지 말 것 (서버 어드민 권한 = DB 전체 접근).
+>
+> Slack Client ID/Secret은 **Supabase Provider 설정에만** 입력. 앱 측에는 절대 노출 X.
 
 ### 6. 동작 확인
 

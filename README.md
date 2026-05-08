@@ -29,7 +29,7 @@
 3. Slack OAuth 인증 후 팀 채팅과 집계 기능이 활성화됩니다.
 
 > Supabase 프로젝트에서 Slack OIDC Provider를 활성화해야 합니다.
-> `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` 환경 변수 설정이 필요합니다.
+> `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` 환경 변수 설정이 필요합니다 (Dashboard > Settings > API > **Publishable key**).
 
 ## 데이터 정책
 
@@ -55,7 +55,7 @@ pnpm install
 
 # 환경 변수 설정 (.env.local)
 VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 
 # 개발 서버 실행
 pnpm tauri dev
