@@ -2,8 +2,8 @@
 src-tauri/target/
 src-tauri/WixTools/
 
-# OMC runtime state (session logs, caches — not source)
-.omc/state/
+# OMC tool metadata (state, plans, project memory — not source)
+.omc/
 
 # Logs
 logs
