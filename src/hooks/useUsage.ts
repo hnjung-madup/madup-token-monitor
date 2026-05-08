@@ -75,6 +75,37 @@ export function useHeatmap(days?: number) {
   });
 }
 
+export interface OAuthUsageWindow {
+  utilization: number;
+  resets_at: string;
+}
+
+export interface OAuthUsage {
+  five_hour: OAuthUsageWindow | null;
+  seven_day: OAuthUsageWindow | null;
+  seven_day_sonnet: OAuthUsageWindow | null;
+  seven_day_opus: OAuthUsageWindow | null;
+  fetched_at: string;
+  is_stale: boolean;
+}
+
+export function useOAuthUsage() {
+  return useQuery({
+    queryKey: ["oauthUsage"],
+    queryFn: async () => {
+      if (IS_MOCK) return null as OAuthUsage | null;
+      try {
+        return await tauriInvoke<OAuthUsage>("get_oauth_usage");
+      } catch {
+        return null;
+      }
+    },
+    staleTime: 5 * 60_000,
+    refetchInterval: 5 * 60_000,
+    retry: 1,
+  });
+}
+
 export function useCompanyTopMcp() {
   return useQuery({
     queryKey: ["company_top_mcp"],

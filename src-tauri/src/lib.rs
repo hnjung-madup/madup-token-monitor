@@ -19,6 +19,9 @@ pub mod aggregator;
 // ============================================================
 pub mod tray;
 
+// Claude OAuth 사용량 (5h / 7d 한도) — Anthropic의 비공개 endpoint
+pub mod oauth_usage;
+
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("안녕하세요, {}! Rust에서 보내는 인사입니다.", name)
@@ -31,6 +34,7 @@ fn greet(name: &str) -> String {
 
 use aggregator::sync_aggregates_now;
 use commands::{get_heatmap, get_summary, get_timeseries, get_top_mcp, get_top_plugins};
+use oauth_usage::get_oauth_usage;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -52,6 +56,7 @@ pub fn run() {
             get_top_plugins,
             get_heatmap,
             sync_aggregates_now,
+            get_oauth_usage,
         ])
         .setup(|app| {
             tray::setup_tray(app.handle())?;

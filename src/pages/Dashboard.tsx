@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useSummary, useTimeseries, useHeatmap } from "@/hooks/useUsage";
+import { useSummary, useTimeseries, useHeatmap, useOAuthUsage } from "@/hooks/useUsage";
 import { DailyBarChart } from "@/components/charts/DailyBarChart";
 import { ToolDonutChart } from "@/components/charts/ToolDonutChart";
 import { ModelBarChart } from "@/components/charts/ModelBarChart";
@@ -94,6 +94,7 @@ export function Dashboard() {
   const { data: summary1 } = useSummary("1d");
   const { data: tsDaily } = useTimeseries(dailyRange);
   const { data: heatmap } = useHeatmap(56);
+  const { data: oauthUsage } = useOAuthUsage();
 
   const dailyAggregated = useMemo(() => aggregateByDay(tsDaily ?? []), [tsDaily]);
 
@@ -126,11 +127,24 @@ export function Dashboard() {
   ).length;
   const todaySessions = Math.max(1, Math.round(todayMessages / 4));
 
-  // Quota mocks (Claude session/weekly limits not tracked yet) — cache 포함 기준
-  const sessionUsage = Math.min(1, todayTokens / 250_000_000);
-  const weeklyUsage = Math.min(1, sumIO(summary7) / 1_500_000_000);
-  const sessionResetMs = 1 * 3600_000 + 3 * 60_000;
-  const weeklyResetMs = 1 * 86_400_000 + 14 * 3600_000 + 53 * 60_000;
+  // OAuth Usage API에서 실제 한도 utilization과 reset 시각을 받음.
+  // API 호출 실패 시(미로그인/네트워크) fallback으로 mock 표시.
+  const fiveHour = oauthUsage?.five_hour ?? null;
+  const sevenDay = oauthUsage?.seven_day ?? null;
+  const hasRealQuota = fiveHour !== null || sevenDay !== null;
+
+  const sessionUsage = fiveHour
+    ? Math.min(1, fiveHour.utilization / 100)
+    : Math.min(1, todayTokens / 250_000_000);
+  const weeklyUsage = sevenDay
+    ? Math.min(1, sevenDay.utilization / 100)
+    : Math.min(1, sumIO(summary7) / 1_500_000_000);
+  const sessionResetMs = fiveHour
+    ? Math.max(0, new Date(fiveHour.resets_at).getTime() - Date.now())
+    : 1 * 3600_000 + 3 * 60_000;
+  const weeklyResetMs = sevenDay
+    ? Math.max(0, new Date(sevenDay.resets_at).getTime() - Date.now())
+    : 1 * 86_400_000 + 14 * 3600_000 + 53 * 60_000;
 
   const week = summary7;
   const month = summary30;
@@ -226,7 +240,11 @@ export function Dashboard() {
           <p className="text-[11px] tracking-[0.18em] uppercase font-bold text-graphite">
             사용량 한도
           </p>
-          <span className="text-[11px] text-graphite">Claude 구독 기준 — 추정값 (Plan 미연동)</span>
+          <span className="text-[11px] text-graphite">
+            {hasRealQuota
+              ? `Claude OAuth API 실시간${oauthUsage?.is_stale ? " (캐시)" : ""}`
+              : "Claude 구독 기준 — 추정값 (OAuth 미연결)"}
+          </span>
         </div>
 
         <div className="space-y-5">
