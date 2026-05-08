@@ -93,10 +93,31 @@ export function Dashboard() {
   const { data: summary7 } = useSummary("7d");
   const { data: summary1 } = useSummary("1d");
   const { data: tsDaily } = useTimeseries(dailyRange);
+  const { data: tsMonth } = useTimeseries("30d");
   const { data: heatmap } = useHeatmap(56);
   const { data: oauthUsage } = useOAuthUsage();
 
   const dailyAggregated = useMemo(() => aggregateByDay(tsDaily ?? []), [tsDaily]);
+
+  // 캘린더 월(이번 달 1일~오늘) 합산 — 30d rolling이 아닌 정확한 "5월" 같은 의미.
+  const monthToDate = useMemo(() => {
+    if (!tsMonth) return { tokens: 0, cost: 0, cache: 0, days: 0 };
+    const now = new Date();
+    const monthStartTs = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    const filtered = tsMonth.filter((p) => p.ts >= monthStartTs);
+    const dayKeys = new Set(filtered.map((p) => localDateKey(p.ts)));
+    let tokens = 0;
+    let cost = 0;
+    let cache = 0;
+    for (const p of filtered) {
+      const cr = p.cache_read ?? 0;
+      const cw = p.cache_write ?? 0;
+      tokens += p.input_tokens + p.output_tokens + cr + cw;
+      cost += p.cost_usd;
+      cache += cr + cw;
+    }
+    return { tokens, cost, cache, days: dayKeys.size };
+  }, [tsMonth]);
 
   if (!summary1 || !summary7 || !summary30) {
     return (
@@ -147,7 +168,6 @@ export function Dashboard() {
     : 1 * 86_400_000 + 14 * 3600_000 + 53 * 60_000;
 
   const week = summary7;
-  const month = summary30;
 
   const dailyLimit = DAILY_CARD_LIMIT[dailyRange];
   const dailyRows = dailyAggregated.slice(-dailyLimit);
@@ -387,18 +407,16 @@ export function Dashboard() {
 
         <div className="hp-card-flat shadow-[0_2px_8px_rgba(26,26,26,0.06)] p-6">
           <p className="text-[11px] tracking-[0.18em] uppercase font-bold text-graphite mb-2">
-            이번 달
+            이번 달 ({new Date().getMonth() + 1}월)
           </p>
           <p className="hp-display-lg text-primary leading-none tabular-nums">
-            {formatTokensCompact(sumIO(month))}
+            {formatTokensCompact(monthToDate.tokens)}
           </p>
           <p className="hp-caption text-graphite mt-2">
-            {formatTokensCompact(month.total_cache_read + month.total_cache_write)} cached
+            {formatTokensCompact(monthToDate.cache)} cached
           </p>
           <p className="hp-caption text-charcoal mt-1">
-            {formatUSD(month.total_cost_usd)} · {formatPercent(
-              month.total_input_tokens / Math.max(1, sumIO(month))
-            )} 입력
+            {formatUSD(monthToDate.cost)} · {monthToDate.days}일
           </p>
         </div>
       </section>

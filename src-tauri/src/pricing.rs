@@ -5,6 +5,10 @@ use std::path::PathBuf;
 use std::sync::OnceLock;
 use std::time::{Duration, SystemTime};
 
+/// 컴파일 타임에 pricing.json을 binary 안으로 embed.
+/// .app/.exe 어디에 두어도 단가표가 항상 함께 따라감.
+const EMBEDDED_PRICING: &str = include_str!("../pricing.json");
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct ModelPrice {
     pub input_usd_per_mtok: f64,
@@ -16,24 +20,27 @@ type PriceTable = HashMap<String, ModelPrice>;
 static PRICE_TABLE: OnceLock<PriceTable> = OnceLock::new();
 
 fn load_price_table() -> PriceTable {
-    // pricing.json is bundled next to the binary in src-tauri/
-    let candidates = vec![
-        PathBuf::from("pricing.json"),
-        std::env::current_exe()
-            .ok()
-            .and_then(|p| p.parent().map(|d| d.join("pricing.json")))
-            .unwrap_or_default(),
-    ];
-    for path in candidates {
-        if path.exists() {
-            if let Ok(text) = fs::read_to_string(&path) {
-                if let Ok(table) = serde_json::from_str::<PriceTable>(&text) {
-                    return table;
-                }
+    // 우선순위: 사용자 ~/.claude/pricing.json (override) → embedded (compile-time)
+    if let Some(home) = dirs::home_dir() {
+        let user = home.join(".claude").join("pricing.json");
+        if let Ok(text) = fs::read_to_string(&user) {
+            if let Ok(table) = serde_json::from_str::<PriceTable>(&text) {
+                return table;
             }
         }
     }
-    PriceTable::new()
+
+    // dev cwd fallback (src-tauri 에서 cargo run 할 때)
+    let cwd_candidate = PathBuf::from("pricing.json");
+    if cwd_candidate.exists() {
+        if let Ok(text) = fs::read_to_string(&cwd_candidate) {
+            if let Ok(table) = serde_json::from_str::<PriceTable>(&text) {
+                return table;
+            }
+        }
+    }
+
+    serde_json::from_str(EMBEDDED_PRICING).unwrap_or_default()
 }
 
 pub fn price_table() -> &'static PriceTable {
@@ -48,11 +55,13 @@ pub fn calc_cost_usd(
     cache_write: i64,
 ) -> f64 {
     let table = price_table();
-    // Try exact match first, then prefix match (e.g. "claude-sonnet-4" matches "claude-sonnet-4-5")
+    // Exact match → longest-prefix match → contains.
+    // 가장 긴 매칭이 가장 specific하므로 (opus-4-7 vs opus-4) 우선.
     let price = table.get(model).or_else(|| {
         table
             .iter()
-            .find(|(k, _)| model.starts_with(k.as_str()) || k.starts_with(model))
+            .filter(|(k, _)| model.starts_with(k.as_str()) || model.contains(k.as_str()))
+            .max_by_key(|(k, _)| k.len())
             .map(|(_, v)| v)
     });
 
