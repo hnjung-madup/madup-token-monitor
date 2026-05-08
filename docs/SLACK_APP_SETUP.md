@@ -24,13 +24,14 @@
 
 좌측 **OAuth & Permissions** → 아래 두 가지 설정.
 
-**Redirect URLs** — `Add New Redirect URL`로 두 개 추가:
+**Redirect URLs** — `Add New Redirect URL`로 **Supabase 콜백 한 개만** 추가:
 ```
-madup-token-monitor://auth/callback
 https://<your-supabase-project>.supabase.co/auth/v1/callback
 ```
 
-`<your-supabase-project>`는 4단계의 Supabase 콜백 URL과 일치해야 함 (Supabase Dashboard → Authentication → Providers → Slack(OIDC) Enable 시 화면에 표시).
+`<your-supabase-project>`는 Supabase Dashboard → Authentication → Providers → Slack(OIDC) Enable 시 화면에 표시되는 콜백 URL과 일치.
+
+> **`madup-token-monitor://auth/callback` 은 Slack에 등록하지 않습니다.** Slack은 https 콜백 외 custom URI scheme에 PKCE를 강제합니다. 우리 흐름에선 Slack이 직접 데스크톱 앱으로 redirect하지 않고 Supabase가 중계합니다. custom URI는 **Supabase 측 화이트리스트**에만 등록 — 다음 단계 참고.
 
 **User Token Scopes** — `Add an OAuth Scope`로 세 개 추가:
 - `openid`
@@ -54,6 +55,17 @@ https://<your-supabase-project>.supabase.co/auth/v1/callback
 3. Client ID, Client Secret 붙여넣기
 4. 화면에 표시된 **Callback URL** 을 복사해서 Slack App의 Redirect URLs와 일치하는지 한 번 더 확인 (불일치 시 Slack App에 추가)
 5. **Save**
+
+### 4-a. Supabase URL Configuration — custom URI 화이트리스트
+
+Slack은 데스크톱 앱의 custom URI(`madup-token-monitor://`)에 직접 redirect하지 않지만, **Supabase는 사용자 토큰을 그 URI로 forward**합니다. Supabase는 화이트리스트에 등록된 URL로만 forward하므로:
+
+1. **Authentication** → **URL Configuration**
+2. **Redirect URLs** 섹션 → **Add URL**
+3. 입력: `madup-token-monitor://auth/callback`
+4. **Save**
+
+> **Site URL** 칸은 비우거나 `http://localhost:1420` 으로 둬도 됨 — 데스크톱 앱은 Site URL을 거의 안 씀.
 
 ### 5. 앱 환경변수
 
@@ -100,8 +112,8 @@ pnpm tauri dev
 
 추가해주실 항목:
 1. OAuth & Permissions → Redirect URLs (기존 URL은 지우지 말고 추가만)
-   - madup-token-monitor://auth/callback
    - https://<supabase-project>.supabase.co/auth/v1/callback
+   (madup-token-monitor:// custom URI는 Slack 등록 불필요 — Supabase 측 화이트리스트로만 처리)
 2. OAuth & Permissions → User Token Scopes
    - openid
    - email
@@ -153,7 +165,8 @@ $$ language plpgsql security definer;
 
 | 증상 | 원인 / 해결 |
 |------|-----------|
-| `redirect_uri_mismatch` | Slack App의 Redirect URLs에 Supabase 콜백 URL과 `madup-token-monitor://auth/callback` 둘 다 정확히 등록됐는지 확인. 끝의 `/` 유무까지 일치시킬 것. |
+| `redirect_uri_mismatch` | Slack App의 Redirect URLs에 Supabase 콜백(`https://...supabase.co/auth/v1/callback`)이 정확히 등록됐는지, 그리고 Supabase URL Configuration의 Redirect URLs에 `madup-token-monitor://auth/callback`이 추가됐는지 확인. 끝의 `/` 유무까지 일치시킬 것. |
+| Slack에서 "사용자 지정 URI 체계 PKCE 활성화" 경고 | `madup-token-monitor://`는 Slack에 등록하지 말 것. Supabase 콜백(https)만 Slack에 등록하고 custom URI는 Supabase URL Configuration에 등록 (4-a 단계). |
 | 로그인 후 앱이 안 열림 | macOS는 자동, Windows는 첫 실행 시 deep-link 등록. dev 모드에서는 `pnpm tauri dev` 재시작 한 번 필요. |
 | `email_provider_disabled` 또는 Slack 옵션 미표시 | Supabase Authentication → Providers → Slack(OIDC) 토글 OFF. ON 후 Save. |
 | 매드업 외 이메일로 가입됨 | `0001_init.sql` 트리거 미적용. Supabase SQL Editor에서 `\df+ public.validate_email_domain` 으로 트리거 함수 존재 확인. |
