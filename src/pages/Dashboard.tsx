@@ -49,14 +49,14 @@ function PillTabs<T extends string>({
   );
 }
 
-// Includes cache_read + cache_write since Claude bills/limits count cache reads.
+// 사용자가 의도한 토큰만 합산: input + output. cache는 시스템이 자동으로 다시 포함시키는
+// 분량이라 "내 사용량" 직관과 맞지 않음 — cache는 별도 라벨로 보여준다.
 function aggregateByDay(points: Point[]): { date: string; tokens: number; cost: number }[] {
   const map = new Map<string, { tokens: number; cost: number }>();
   for (const p of points) {
     const key = new Date(p.ts).toISOString().slice(0, 10);
     const cur = map.get(key) ?? { tokens: 0, cost: 0 };
-    cur.tokens +=
-      p.input_tokens + p.output_tokens + (p.cache_read ?? 0) + (p.cache_write ?? 0);
+    cur.tokens += p.input_tokens + p.output_tokens;
     cur.cost += p.cost_usd;
     map.set(key, cur);
   }
@@ -94,15 +94,16 @@ export function Dashboard() {
     );
   }
 
-  // Sum input + output + cache across the four token columns. Claude rate
-  // limits and cost models count cache reads, so the headline number must too.
-  const sumAll = (s: typeof summary1) =>
-    s.total_input_tokens + s.total_output_tokens + s.total_cache_read + s.total_cache_write;
+  // 사용자가 의도한 토큰 (input + output)만을 메인 숫자로 사용.
+  // cache_read/cache_write는 시스템이 system prompt + history를 매 turn 재포함시키는
+  // 분량이라 "내 사용량" 직관과 맞지 않음 — 별도 라벨로만 표시.
+  const sumIO = (s: typeof summary1) => s.total_input_tokens + s.total_output_tokens;
+  const sumCache = (s: typeof summary1) => s.total_cache_read + s.total_cache_write;
 
-  const todayTokens = sumAll(summary1);
-  const todayCache = summary1.total_cache_read + summary1.total_cache_write;
+  const todayTokens = sumIO(summary1);
+  const todayCache = sumCache(summary1);
   const todayCost = summary1.total_cost_usd;
-  const weekAvgDailyTokens = sumAll(summary7) / 7;
+  const weekAvgDailyTokens = sumIO(summary7) / 7;
   const todayVsWeek = pctDiff(todayTokens, weekAvgDailyTokens);
 
   const todayMessages = (tsDaily ?? []).filter(
@@ -110,9 +111,9 @@ export function Dashboard() {
   ).length;
   const todaySessions = Math.max(1, Math.round(todayMessages / 4));
 
-  // Quota mocks (Claude session/weekly limits not tracked yet)
-  const sessionUsage = Math.min(1, todayTokens / 250_000_000);
-  const weeklyUsage = Math.min(1, sumAll(summary7) / 1_500_000_000);
+  // Quota mocks (Claude session/weekly limits not tracked yet) — input+output 기준
+  const sessionUsage = Math.min(1, todayTokens / 50_000_000);
+  const weeklyUsage = Math.min(1, sumIO(summary7) / 300_000_000);
   const sessionResetMs = 1 * 3600_000 + 3 * 60_000;
   const weeklyResetMs = 1 * 86_400_000 + 14 * 3600_000 + 53 * 60_000;
 
@@ -336,14 +337,14 @@ export function Dashboard() {
             이번 주
           </p>
           <p className="hp-display-lg text-primary leading-none tabular-nums">
-            {formatTokensCompact(sumAll(week))}
+            {formatTokensCompact(sumIO(week))}
           </p>
           <p className="hp-caption text-graphite mt-2">
             {formatTokensCompact(week.total_cache_read + week.total_cache_write)} cached
           </p>
           <p className="hp-caption text-charcoal mt-1">
             {formatUSD(week.total_cost_usd)} · {formatPercent(
-              week.total_input_tokens / Math.max(1, sumAll(week))
+              week.total_input_tokens / Math.max(1, sumIO(week))
             )} 입력
           </p>
         </div>
@@ -353,14 +354,14 @@ export function Dashboard() {
             이번 달
           </p>
           <p className="hp-display-lg text-primary leading-none tabular-nums">
-            {formatTokensCompact(sumAll(month))}
+            {formatTokensCompact(sumIO(month))}
           </p>
           <p className="hp-caption text-graphite mt-2">
             {formatTokensCompact(month.total_cache_read + month.total_cache_write)} cached
           </p>
           <p className="hp-caption text-charcoal mt-1">
             {formatUSD(month.total_cost_usd)} · {formatPercent(
-              month.total_input_tokens / Math.max(1, sumAll(month))
+              month.total_input_tokens / Math.max(1, sumIO(month))
             )} 입력
           </p>
         </div>
