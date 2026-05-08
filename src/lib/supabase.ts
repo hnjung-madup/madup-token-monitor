@@ -16,9 +16,11 @@ export async function signInWithSlack() {
     options: {
       redirectTo: "madup-token-monitor://auth/callback",
       scopes: "openid email profile",
+      skipBrowserRedirect: true,
     },
   });
   if (error) throw error;
+  if (!data.url) throw new Error("No OAuth URL returned from Supabase");
   return data;
 }
 

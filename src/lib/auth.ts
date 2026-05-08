@@ -1,11 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { supabase, signInWithSlack } from "./supabase";
 
 export type AuthState = "loading" | "authenticated" | "unauthenticated";
 
 export async function startSlackLogin(): Promise<void> {
-  // deep-link 핸들러가 등록된 후 OAuth URL 오픈
-  await signInWithSlack();
+  const { url } = await signInWithSlack();
+  if (!url) throw new Error("OAuth URL is missing");
+  await openUrl(url);
 }
 
 // Tauri deep-link callback에서 호출: madup-token-monitor://auth/callback?code=...

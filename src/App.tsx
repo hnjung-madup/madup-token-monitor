@@ -1,6 +1,8 @@
-import { BrowserRouter, Routes, Route, NavLink } from "react-router-dom";
+import { useEffect } from "react";
+import { BrowserRouter, Routes, Route, NavLink, useNavigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import { onOpenUrl } from "@tauri-apps/plugin-deep-link";
 import "@/i18n/index";
 import { Dashboard } from "@/pages/Dashboard";
 import MCP from "@/pages/MCP";
@@ -10,6 +12,7 @@ import Settings from "@/pages/Settings";
 import Login from "@/pages/Login";
 import Profile from "@/pages/Profile";
 import { AuthGuard } from "@/lib/AuthGuard";
+import { handleAuthCallback } from "@/lib/auth";
 
 // [ROUTING MARKER] W3: Dashboard, MCP 페이지 라우트는 이미 등록됨
 // [ROUTING MARKER] W4: Login, Profile 라우트 추가됨
@@ -75,10 +78,32 @@ function Layout() {
   );
 }
 
+function DeepLinkBridge() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    onOpenUrl(async (urls) => {
+      const url = urls?.[0];
+      if (!url || !url.startsWith("madup-token-monitor://auth/callback")) return;
+      const ok = await handleAuthCallback(url);
+      if (ok) navigate("/", { replace: true });
+    })
+      .then((u) => {
+        unlisten = u;
+      })
+      .catch(() => {
+        // dev 모드에서 deep-link 미등록 가능 — 빌드 후 정식 동작
+      });
+    return () => unlisten?.();
+  }, [navigate]);
+  return null;
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+        <DeepLinkBridge />
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/*" element={<Layout />} />
