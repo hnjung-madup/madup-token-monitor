@@ -41,9 +41,6 @@
       "endpoints": [
         "https://example.com/updates/{{target}}/{{arch}}/{{current_version}}"
       ]
-    },
-    "autostart": {
-      "args": []
     }
   },
   "bundle": {
