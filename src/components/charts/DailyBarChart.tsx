@@ -26,8 +26,8 @@ export function DailyBarChart({ data }: Props) {
   }));
 
   return (
-    <ResponsiveContainer width="100%" height={240}>
-      <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+    <ResponsiveContainer width="100%" height={260}>
+      <BarChart data={chartData} margin={{ top: 20, right: 12, left: 4, bottom: 4 }}>
         <CartesianGrid strokeDasharray="3 3" stroke={tokens.hairline} />
         <XAxis dataKey="date" tick={{ fontSize: 11, fill: tokens.graphite }} />
         <YAxis

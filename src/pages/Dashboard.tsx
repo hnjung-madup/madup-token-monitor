@@ -49,13 +49,23 @@ function PillTabs<T extends string>({
   );
 }
 
+// 일자 키는 local timezone 기준 — UTC로 묶으면 한국 사용자의 KST 9시 이전 작업이
+// 전날 UTC로 빠져나가서 "오늘"이 비어 보인다.
+function localDateKey(ts: number): string {
+  const d = new Date(ts);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 // AI Token Monitor와 동일한 합산: input + output + cache_read + cache_write.
 // cache까지 포함해야 Claude API가 청구하는 진짜 사용량 = "토큰 사용량" 의미와 맞다.
 // (cache는 cards에 별도 라벨로도 표시되어 비교 가능)
 function aggregateByDay(points: Point[]): { date: string; tokens: number; cost: number }[] {
   const map = new Map<string, { tokens: number; cost: number }>();
   for (const p of points) {
-    const key = new Date(p.ts).toISOString().slice(0, 10);
+    const key = localDateKey(p.ts);
     const cur = map.get(key) ?? { tokens: 0, cost: 0 };
     cur.tokens += p.input_tokens + p.output_tokens + (p.cache_read ?? 0) + (p.cache_write ?? 0);
     cur.cost += p.cost_usd;
@@ -216,7 +226,7 @@ export function Dashboard() {
           <p className="text-[11px] tracking-[0.18em] uppercase font-bold text-graphite">
             사용량 한도
           </p>
-          <span className="text-[11px] text-graphite">Claude 구독 기준 (모의)</span>
+          <span className="text-[11px] text-graphite">Claude 구독 기준 — 추정값 (Plan 미연동)</span>
         </div>
 
         <div className="space-y-5">
@@ -329,7 +339,10 @@ export function Dashboard() {
         )}
 
         <div className="flex justify-end mt-5">
-          <button onClick={copyDailyToClipboard} className="hp-btn-ink !h-10 !px-5">
+          <button
+            onClick={copyDailyToClipboard}
+            className="px-3 py-1.5 text-[12px] font-semibold rounded-md border border-hairline bg-canvas text-charcoal hover:bg-cloud transition-colors"
+          >
             Copy
           </button>
         </div>
