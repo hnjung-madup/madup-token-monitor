@@ -89,6 +89,47 @@ pnpm tauri dev
 
 ---
 
+## 인증 후 안내 페이지 (선택, 권장)
+
+기본 흐름에서는 외부 브라우저 탭이 자동으로 닫히지 않습니다 (OS가 deep-link를 가로채면서 브라우저 navigate를 cancel — 표준 동작). 사용자에게 "로그인 완료. 앱으로 돌아갔습니다." 안내를 보여주려면 정적 success 페이지를 외부에 호스팅해서 두 단계 redirect로 연결합니다.
+
+```
+Slack → Supabase → https://[hosted]/auth-callback/   (안내 페이지)
+                          ↓ JS가 토큰 fragment 받아 deep-link로 forward
+                       madup-token-monitor:// (앱이 받음)
+```
+
+리포지토리에 `docs/auth-callback/index.html` 정적 페이지가 미리 준비되어 있습니다.
+
+### 호스팅 옵션 (가장 간단한 순)
+
+**Option 1 — GitHub Pages**
+1. 리포지토리를 GitHub에 push
+2. **Settings → Pages** → **Source: Deploy from a branch** → branch `main`, folder `/docs`
+3. 1~2분 후 `https://<github-username>.github.io/<repo>/auth-callback/` 접근 가능
+
+**Option 2 — Cloudflare Pages**
+1. https://pages.cloudflare.com → Connect 리포지토리
+2. Build output: `docs`
+3. 즉시 `https://<project>.pages.dev/auth-callback/` 발급
+
+**Option 3 — Supabase Storage**
+1. Storage → Public bucket `auth-page` 생성
+2. `docs/auth-callback/index.html` 업로드
+3. URL: `https://<project>.supabase.co/storage/v1/object/public/auth-page/index.html`
+
+### 배포 후 설정
+
+1. `.env`에 추가:
+   ```env
+   VITE_AUTH_SUCCESS_URL=https://<your-host>/auth-callback/
+   ```
+2. Supabase Dashboard → Authentication → URL Configuration → Redirect URLs에 위 URL **추가**
+3. `pnpm tauri build` 다시 → 새 .app 실행 → 로그인 시도
+4. 이제 인증 완료 시 외부 브라우저에 "로그인 완료" 카드 표시 + 앱 자동 활성화
+
+---
+
 ## Path B — 운영 전환 (사내 App으로 교체)
 
 테스트가 끝나고 사내 표준 App으로 교체할 때.

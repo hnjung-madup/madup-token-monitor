@@ -10,11 +10,17 @@ export async function getCurrentUser() {
   return data.user;
 }
 
+// 인증 후 redirect 위치
+// - VITE_AUTH_SUCCESS_URL이 있으면 그 https URL로 → success 페이지에서 deep-link로 forward (사용자 경험 ↑)
+// - 없으면 deep-link 직접 redirect (브라우저 탭이 안 닫히는 known limitation)
+const AUTH_REDIRECT_URL =
+  import.meta.env.VITE_AUTH_SUCCESS_URL ?? "madup-token-monitor://auth/callback";
+
 export async function signInWithSlack() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "slack_oidc",
     options: {
-      redirectTo: "madup-token-monitor://auth/callback",
+      redirectTo: AUTH_REDIRECT_URL,
       scopes: "openid email profile",
       skipBrowserRedirect: true,
     },
