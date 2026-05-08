@@ -73,6 +73,17 @@ fn parse_claude_line(
                 .and_then(Value::as_i64)
                 .unwrap_or(0);
 
+            // dedup keys — same response that gets mirrored across worktrees
+            // shares (message_id, request_id), so we use them as the unique tuple.
+            let message_id = val
+                .pointer("/message/id")
+                .and_then(Value::as_str)
+                .map(str::to_owned);
+            let request_id = val
+                .get("requestId")
+                .and_then(Value::as_str)
+                .map(str::to_owned);
+
             let cost_usd = model.as_deref().map(|m| {
                 calc_cost_usd(
                     m,
@@ -95,6 +106,8 @@ fn parse_claude_line(
                 cost_usd,
                 project: project.map(str::to_owned),
                 session_id: session_id.map(str::to_owned),
+                message_id,
+                request_id,
             });
         }
 
@@ -160,6 +173,8 @@ fn parse_codex_line(
             cost_usd,
             project: project.map(str::to_owned),
             session_id: session_id.map(str::to_owned),
+            message_id: None,
+            request_id: None,
         });
     }
 }
@@ -202,6 +217,8 @@ fn parse_opencode_line(
             cost_usd,
             project: project.map(str::to_owned),
             session_id: session_id.map(str::to_owned),
+            message_id: None,
+            request_id: None,
         });
     }
 }

@@ -31,12 +31,15 @@ fn migrate(conn: &Connection) -> Result<()> {
             cache_write  INTEGER,
             cost_usd     REAL,
             project      TEXT,
-            session_id   TEXT
+            session_id   TEXT,
+            message_id   TEXT,
+            request_id   TEXT
         );
         CREATE INDEX IF NOT EXISTS idx_usage_ts ON usage_events(ts);
-        -- 중복 INSERT 방지: 동일 session에 같은 ts/model/tokens 조합은 동일 응답
-        CREATE UNIQUE INDEX IF NOT EXISTS uniq_usage_event
-            ON usage_events(source, session_id, ts, model, input_tokens, output_tokens, cache_read, cache_write);
+        -- ai-token-monitor와 동일한 dedup key. 같은 응답이 여러 jsonl에 미러되어도
+        -- (message_id, request_id) 조합으로 한 번만 카운트.
+        CREATE UNIQUE INDEX IF NOT EXISTS uniq_usage_msg
+            ON usage_events(message_id, request_id);
 
         CREATE TABLE IF NOT EXISTS tool_calls (
             id        INTEGER PRIMARY KEY,
@@ -49,19 +52,29 @@ fn migrate(conn: &Connection) -> Result<()> {
         CREATE INDEX IF NOT EXISTS idx_tool_ts ON tool_calls(ts);
         CREATE UNIQUE INDEX IF NOT EXISTS uniq_tool_call
             ON tool_calls(source, ts, tool_name);",
-    )
+    )?;
+
+    // 기존 DB의 누락된 컬럼 추가 (idempotent)
+    let _ = conn.execute("ALTER TABLE usage_events ADD COLUMN message_id TEXT", []);
+    let _ = conn.execute("ALTER TABLE usage_events ADD COLUMN request_id TEXT", []);
+
+    // 옛 (source, session_id, ts, model, tokens) UNIQUE INDEX는 약해서 중복 허용 — 제거
+    let _ = conn.execute("DROP INDEX IF EXISTS uniq_usage_event", []);
+
+    Ok(())
 }
 
 pub fn insert_usage_event(conn: &Connection, e: &UsageEvent) -> Result<()> {
     conn.execute(
         "INSERT OR IGNORE INTO usage_events
-            (source, model, ts, input_tokens, output_tokens, cache_read, cache_write, cost_usd, project, session_id)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",
+            (source, model, ts, input_tokens, output_tokens, cache_read, cache_write, cost_usd, project, session_id, message_id, request_id)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12)",
         params![
             e.source, e.model, e.ts,
             e.input_tokens, e.output_tokens,
             e.cache_read, e.cache_write,
-            e.cost_usd, e.project, e.session_id
+            e.cost_usd, e.project, e.session_id,
+            e.message_id, e.request_id,
         ],
     )?;
     Ok(())
