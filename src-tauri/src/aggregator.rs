@@ -1,7 +1,15 @@
-use rusqlite::Connection;
-use serde::Serialize;
-use std::collections::HashMap;
+// 사내 집계 업로드 — 로컬 SQLite의 toks/cost/MCP/플러그인 카운트를 Supabase로 upsert.
+// 원본 메시지/프롬프트는 절대 업로드하지 않는다. 카운트와 합계만.
+//
+// 전제조건: 호출자가 share_consent=true임을 확인한 뒤에만 호출.
+// user_id는 호출자가 인증된 Supabase 세션의 auth.uid()를 넘김 — RLS WITH CHECK 통과용.
 
+use chrono::{Local, TimeZone};
+use serde::Serialize;
+
+use crate::db;
+
+/// 우리 Supabase usage_aggregates row 형태
 #[derive(Debug, Serialize)]
 struct UsageAggregate {
     user_id: String,
@@ -13,7 +21,7 @@ struct UsageAggregate {
 }
 
 #[derive(Debug, Serialize)]
-struct McpUsage {
+struct McpUsageRow {
     user_id: String,
     date: String,
     mcp_server: String,
@@ -21,154 +29,201 @@ struct McpUsage {
 }
 
 #[derive(Debug, Serialize)]
-struct PluginUsage {
+struct PluginUsageRow {
     user_id: String,
     date: String,
     plugin_id: String,
     count: i64,
 }
 
-#[derive(Debug, Serialize)]
-struct AggregatePayload {
-    usage_aggregates: Vec<UsageAggregate>,
-    mcp_usage: Vec<McpUsage>,
-    plugin_usage: Vec<PluginUsage>,
+/// unix_ms timestamp을 local timezone YYYY-MM-DD 문자열로.
+/// 로컬 일자 기준이라야 한국 사용자가 인식하는 "5/9 작업"이 정확히 5/9에 들어감.
+fn local_date_string(ts_ms: i64) -> Option<String> {
+    let secs = ts_ms / 1000;
+    let nanos = ((ts_ms % 1000) * 1_000_000) as u32;
+    Local.timestamp_opt(secs, nanos).single().map(|dt| dt.format("%Y-%m-%d").to_string())
 }
 
-fn read_local_aggregates(db_path: &str) -> Result<AggregatePayload, Box<dyn std::error::Error>> {
-    let conn = Connection::open(db_path)?;
+fn read_usage_aggregates(user_id: &str) -> Result<Vec<UsageAggregate>, String> {
+    let conn = db::open().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT ts, source, input_tokens, output_tokens, cost_usd
+             FROM usage_events",
+        )
+        .map_err(|e| e.to_string())?;
 
-    // 토큰 카운트와 비용 합계만 — 원본 메시지/프롬프트 절대 업로드 금지
-    let mut stmt = conn.prepare(
-        "SELECT date, source,
-                SUM(input_tokens) as total_input,
-                SUM(output_tokens) as total_output,
-                SUM(cost_usd) as total_cost_usd
-         FROM usage_log
-         GROUP BY date, source",
-    )?;
-
-    let usage_aggregates: Vec<UsageAggregate> = stmt
+    // (date, source) → (input, output, cost) 합산.
+    use std::collections::HashMap;
+    let mut acc: HashMap<(String, String), (i64, i64, f64)> = HashMap::new();
+    let rows = stmt
         .query_map([], |row| {
-            Ok(UsageAggregate {
-                user_id: String::new(), // Supabase에서 auth.uid()로 채움
-                date: row.get(0)?,
-                source: row.get(1)?,
-                total_input: row.get(2)?,
-                total_output: row.get(3)?,
-                total_cost_usd: row.get(4)?,
-            })
-        })?
-        .filter_map(|r| r.ok())
-        .collect();
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, Option<i64>>(2)?,
+                row.get::<_, Option<i64>>(3)?,
+                row.get::<_, Option<f64>>(4)?,
+            ))
+        })
+        .map_err(|e| e.to_string())?;
 
-    let mut mcp_stmt = conn.prepare(
-        "SELECT date, mcp_server, SUM(count) as count
-         FROM mcp_usage_log
-         GROUP BY date, mcp_server",
-    )?;
+    for r in rows.flatten() {
+        let (ts, source, inp, out, cost) = r;
+        if let Some(date) = local_date_string(ts) {
+            let entry = acc.entry((date, source)).or_insert((0, 0, 0.0));
+            entry.0 += inp.unwrap_or(0);
+            entry.1 += out.unwrap_or(0);
+            entry.2 += cost.unwrap_or(0.0);
+        }
+    }
 
-    let mcp_usage: Vec<McpUsage> = mcp_stmt
-        .query_map([], |row| {
-            Ok(McpUsage {
-                user_id: String::new(),
-                date: row.get(0)?,
-                mcp_server: row.get(1)?,
-                count: row.get(2)?,
-            })
-        })?
-        .filter_map(|r| r.ok())
-        .collect();
-
-    let mut plugin_stmt = conn.prepare(
-        "SELECT date, plugin_id, SUM(count) as count
-         FROM plugin_usage_log
-         GROUP BY date, plugin_id",
-    )?;
-
-    let plugin_usage: Vec<PluginUsage> = plugin_stmt
-        .query_map([], |row| {
-            Ok(PluginUsage {
-                user_id: String::new(),
-                date: row.get(0)?,
-                plugin_id: row.get(1)?,
-                count: row.get(2)?,
-            })
-        })?
-        .filter_map(|r| r.ok())
-        .collect();
-
-    Ok(AggregatePayload {
-        usage_aggregates,
-        mcp_usage,
-        plugin_usage,
-    })
+    Ok(acc
+        .into_iter()
+        .map(|((date, source), (inp, out, cost))| UsageAggregate {
+            user_id: user_id.to_string(),
+            date,
+            source,
+            total_input: inp,
+            total_output: out,
+            total_cost_usd: cost,
+        })
+        .collect())
 }
 
-fn upsert_to_supabase(
+fn read_tool_calls(user_id: &str) -> Result<(Vec<McpUsageRow>, Vec<PluginUsageRow>), String> {
+    let conn = db::open().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare("SELECT ts, mcp_server, plugin_id FROM tool_calls")
+        .map_err(|e| e.to_string())?;
+
+    use std::collections::HashMap;
+    let mut mcp: HashMap<(String, String), i64> = HashMap::new();
+    let mut plugin: HashMap<(String, String), i64> = HashMap::new();
+
+    let rows = stmt
+        .query_map([], |row| {
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, Option<String>>(1)?,
+                row.get::<_, Option<String>>(2)?,
+            ))
+        })
+        .map_err(|e| e.to_string())?;
+
+    for r in rows.flatten() {
+        let (ts, mcp_server, plugin_id) = r;
+        let Some(date) = local_date_string(ts) else { continue };
+        if let Some(server) = mcp_server {
+            *mcp.entry((date.clone(), server)).or_insert(0) += 1;
+        }
+        if let Some(p) = plugin_id {
+            *plugin.entry((date, p)).or_insert(0) += 1;
+        }
+    }
+
+    let mcp_rows = mcp
+        .into_iter()
+        .map(|((date, mcp_server), count)| McpUsageRow {
+            user_id: user_id.to_string(),
+            date,
+            mcp_server,
+            count,
+        })
+        .collect();
+    let plugin_rows = plugin
+        .into_iter()
+        .map(|((date, plugin_id), count)| PluginUsageRow {
+            user_id: user_id.to_string(),
+            date,
+            plugin_id,
+            count,
+        })
+        .collect();
+    Ok((mcp_rows, plugin_rows))
+}
+
+fn upsert<T: Serialize>(
     supabase_url: &str,
-    anon_key: &str,
+    publishable_key: &str,
     access_token: &str,
-    payload: &AggregatePayload,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let client = ureq::AgentBuilder::new().build();
-    let auth_header = format!("Bearer {}", access_token);
-
-    let headers: HashMap<&str, &str> = HashMap::from([
-        ("apikey", anon_key),
-        ("Authorization", &auth_header),
-        ("Content-Type", "application/json"),
-        ("Prefer", "resolution=merge-duplicates"),
-    ]);
-
-    // usage_aggregates upsert
-    if !payload.usage_aggregates.is_empty() {
-        let mut req = client.post(&format!("{}/rest/v1/usage_aggregates", supabase_url));
-        for (k, v) in &headers {
-            req = req.set(k, v);
-        }
-        req.send_json(serde_json::to_value(&payload.usage_aggregates)?)?;
+    table: &str,
+    rows: &[T],
+    on_conflict: &str,
+) -> Result<usize, String> {
+    if rows.is_empty() {
+        return Ok(0);
     }
-
-    // mcp_usage upsert
-    if !payload.mcp_usage.is_empty() {
-        let mut req = client.post(&format!("{}/rest/v1/mcp_usage", supabase_url));
-        for (k, v) in &headers {
-            req = req.set(k, v);
+    let url = format!(
+        "{}/rest/v1/{}?on_conflict={}",
+        supabase_url, table, on_conflict
+    );
+    let body = serde_json::to_value(rows).map_err(|e| format!("serialize: {e}"))?;
+    let resp = ureq::post(&url)
+        .set("apikey", publishable_key)
+        .set("Authorization", &format!("Bearer {}", access_token))
+        .set("Content-Type", "application/json")
+        .set("Prefer", "resolution=merge-duplicates")
+        .send_json(body);
+    match resp {
+        Ok(_) => Ok(rows.len()),
+        Err(ureq::Error::Status(code, response)) => {
+            let body = response.into_string().unwrap_or_default();
+            Err(format!("HTTP {code} on {table}: {body}"))
         }
-        req.send_json(serde_json::to_value(&payload.mcp_usage)?)?;
+        Err(ureq::Error::Transport(e)) => Err(format!("Transport on {table}: {e}")),
     }
-
-    // plugin_usage upsert
-    if !payload.plugin_usage.is_empty() {
-        let mut req = client.post(&format!("{}/rest/v1/plugin_usage", supabase_url));
-        for (k, v) in &headers {
-            req = req.set(k, v);
-        }
-        req.send_json(serde_json::to_value(&payload.plugin_usage)?)?;
-    }
-
-    Ok(())
 }
 
-/// Tauri command: 즉시 집계 동기화 (share_consent=true인 경우만)
+#[derive(Debug, Serialize)]
+pub struct SyncResult {
+    pub usage_rows: usize,
+    pub mcp_rows: usize,
+    pub plugin_rows: usize,
+}
+
+/// Tauri command: 즉시 집계 동기화.
+/// 호출자(frontend)가 share_consent=true인지 확인 후, 본인의 supabase access_token과
+/// user_id를 함께 전달해야 한다. RLS WITH CHECK가 user_id = auth.uid()로 강제하므로
+/// 다른 사람 데이터로 사칭할 수 없다.
 #[tauri::command]
 pub async fn sync_aggregates_now(
     supabase_url: String,
-    anon_key: String,
+    publishable_key: String,
     access_token: String,
-    db_path: String,
-) -> Result<String, String> {
-    let payload =
-        read_local_aggregates(&db_path).map_err(|e| format!("DB read error: {}", e))?;
+    user_id: String,
+) -> Result<SyncResult, String> {
+    let usage = read_usage_aggregates(&user_id)?;
+    let (mcp, plugins) = read_tool_calls(&user_id)?;
 
-    upsert_to_supabase(&supabase_url, &anon_key, &access_token, &payload)
-        .map_err(|e| format!("Supabase upsert error: {}", e))?;
+    let usage_n = upsert(
+        &supabase_url,
+        &publishable_key,
+        &access_token,
+        "usage_aggregates",
+        &usage,
+        "user_id,date,source",
+    )?;
+    let mcp_n = upsert(
+        &supabase_url,
+        &publishable_key,
+        &access_token,
+        "mcp_usage",
+        &mcp,
+        "user_id,date,mcp_server",
+    )?;
+    let plugin_n = upsert(
+        &supabase_url,
+        &publishable_key,
+        &access_token,
+        "plugin_usage",
+        &plugins,
+        "user_id,date,plugin_id",
+    )?;
 
-    Ok(format!(
-        "Synced: {} usage rows, {} mcp rows, {} plugin rows",
-        payload.usage_aggregates.len(),
-        payload.mcp_usage.len(),
-        payload.plugin_usage.len()
-    ))
+    Ok(SyncResult {
+        usage_rows: usage_n,
+        mcp_rows: mcp_n,
+        plugin_rows: plugin_n,
+    })
 }

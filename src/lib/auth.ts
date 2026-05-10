@@ -48,7 +48,26 @@ export async function getAuthState(): Promise<AuthState> {
   return data.session ? "authenticated" : "unauthenticated";
 }
 
-// Tauri command로 집계 즉시 동기화 요청
-export async function syncAggregatesNow(): Promise<void> {
-  await invoke("sync_aggregates_now");
+export interface SyncResult {
+  usage_rows: number;
+  mcp_rows: number;
+  plugin_rows: number;
+}
+
+/// 즉시 집계 동기화 (share_consent=true 유저만 호출). access_token + user_id를 명시적으로 넘긴다.
+export async function syncAggregatesNow(): Promise<SyncResult | null> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const session = sessionData.session;
+  if (!session) return null;
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL ?? "";
+  const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "";
+  if (!supabaseUrl || !publishableKey) return null;
+
+  return invoke<SyncResult>("sync_aggregates_now", {
+    supabaseUrl,
+    publishableKey,
+    accessToken: session.access_token,
+    userId: session.user.id,
+  });
 }
