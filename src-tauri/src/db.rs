@@ -95,23 +95,24 @@ pub fn insert_tool_call(conn: &Connection, t: &ToolCall) -> Result<()> {
 }
 
 /// Returns unix-ms range for the given range string.
-/// "today" / "1d" 모두 local timezone 자정 ~ 지금. 한국 사용자가 KST 0시부터 인식하는 "오늘"과 일치.
+/// 모든 range를 local timezone 자정 기준으로 통일 (사내 RPC date-based와 일치).
+/// 7d = 오늘 포함 7일치(=오늘 자정 - 6일 = 6일 전 0시), 30d = 오늘 - 29일.
 pub fn range_bounds(range: &str) -> (i64, i64) {
-    use chrono::{Local, TimeZone};
+    use chrono::{Duration, Local, TimeZone};
     let now = chrono::Utc::now().timestamp_millis();
-    let day_ms = 86_400_000i64;
+    let today_local = Local::now().date_naive();
+    let midnight_ms = |d: chrono::NaiveDate| -> i64 {
+        Local
+            .from_local_datetime(&d.and_hms_opt(0, 0, 0).unwrap())
+            .single()
+            .map(|dt| dt.timestamp_millis())
+            .unwrap_or(now)
+    };
     let start = match range {
-        "today" | "1d" => {
-            let today = Local::now().date_naive();
-            Local
-                .from_local_datetime(&today.and_hms_opt(0, 0, 0).unwrap())
-                .single()
-                .map(|dt| dt.timestamp_millis())
-                .unwrap_or(now - day_ms)
-        }
-        "7d" => now - 7 * day_ms,
-        "30d" => now - 30 * day_ms,
-        _ => now - day_ms,
+        "today" | "1d" => midnight_ms(today_local),
+        "7d" => midnight_ms(today_local - Duration::days(6)),
+        "30d" => midnight_ms(today_local - Duration::days(29)),
+        _ => midnight_ms(today_local),
     };
     (start, now)
 }
