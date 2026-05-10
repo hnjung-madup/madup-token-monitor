@@ -95,8 +95,8 @@ pub fn insert_tool_call(conn: &Connection, t: &ToolCall) -> Result<()> {
 }
 
 /// Returns unix-ms range for the given range string.
-/// 모든 range를 local timezone 자정 기준으로 통일 (사내 RPC date-based와 일치).
-/// 7d = 오늘 포함 7일치(=오늘 자정 - 6일 = 6일 전 0시), 30d = 오늘 - 29일.
+/// 모든 range를 local-tz 자정 기준 + Postgres `current_date - interval 'N days'`와 일치하는
+/// "오늘 자정 - N일" 시작점으로 통일. 사내 RPC와 동일 정의.
 pub fn range_bounds(range: &str) -> (i64, i64) {
     use chrono::{Duration, Local, TimeZone};
     let now = chrono::Utc::now().timestamp_millis();
@@ -110,8 +110,8 @@ pub fn range_bounds(range: &str) -> (i64, i64) {
     };
     let start = match range {
         "today" | "1d" => midnight_ms(today_local),
-        "7d" => midnight_ms(today_local - Duration::days(6)),
-        "30d" => midnight_ms(today_local - Duration::days(29)),
+        "7d" => midnight_ms(today_local - Duration::days(7)),
+        "30d" => midnight_ms(today_local - Duration::days(30)),
         _ => midnight_ms(today_local),
     };
     (start, now)
