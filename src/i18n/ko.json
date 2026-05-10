@@ -10,9 +10,9 @@
   "dashboard": {
     "title": "토큰 사용 현황",
     "period": {
-      "today": "오늘",
-      "week": "7일",
-      "month": "30일"
+      "today": "일자별",
+      "week": "주별",
+      "month": "월별"
     },
     "cards": {
       "totalTokens": "총 토큰",

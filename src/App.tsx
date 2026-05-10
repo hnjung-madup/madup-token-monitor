@@ -46,12 +46,16 @@ const NAV_ITEMS = [
 ] as const;
 
 function MadupMark({ size = 28 }: { size?: number }) {
+  // draggable=false: img 의 native HTML5 drag 이 tauri drag region 을 가로채는 것 방지.
+  // data-tauri-drag-region: img 위에서 mousedown 시작해도 윈도우 드래그가 작동.
   return (
     <img
       src="/madup-favicon.png"
       alt="Madup"
       width={size}
       height={size}
+      draggable={false}
+      data-tauri-drag-region
       className="shrink-0"
     />
   );

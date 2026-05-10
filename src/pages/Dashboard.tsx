@@ -6,6 +6,7 @@ import { DailyBarChart } from "@/components/charts/DailyBarChart";
 import { MinimalBarList } from "@/components/MinimalBarList";
 import { HeatMap } from "@/components/HeatMap";
 import { SegmentedBar, quotaTextColor } from "@/components/SegmentedBar";
+import { Select } from "@/components/ui/Select";
 import {
   formatTokensCompact,
   formatUSD,
@@ -296,21 +297,12 @@ export function Dashboard() {
       <section className="hp-card-flat shadow-[0_2px_8px_rgba(26,26,26,0.06)] p-3">
         <div className="flex items-center justify-between gap-2 mb-2">
           <div className="flex items-center gap-2">
-            <p className="text-[10px] tracking-[0.18em] uppercase font-bold text-graphite">
-              일자별
-            </p>
-            <select
+            <Select
               value={dailyRange}
-              onChange={(e) => setDailyRange(e.target.value as Range)}
-              className="text-[11px] font-semibold rounded-md border border-hairline bg-canvas text-charcoal px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary"
-              aria-label="기간 선택"
-            >
-              {RANGES.map((r) => (
-                <option key={r.value} value={r.value}>
-                  {t(r.label)}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setDailyRange(v as Range)}
+              options={RANGES.map((r) => ({ value: r.value, label: t(r.label) }))}
+              ariaLabel="기간 선택"
+            />
           </div>
           <div className="flex items-center gap-1">
             <div className="inline-flex rounded-md border border-hairline overflow-hidden text-[11px]">
