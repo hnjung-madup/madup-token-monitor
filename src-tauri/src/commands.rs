@@ -3,6 +3,28 @@ use crate::db::{open, range_bounds};
 use crate::models::{DayCount, McpUsage, PluginUsage, Point, Summary, SourceSummary, ModelSummary};
 use crate::pricing::usd_to_krw_rate;
 
+/// 오늘(local-tz 자정 기준) USD 비용 합계. 트레이 타이틀 표시용.
+pub fn today_cost_usd() -> f64 {
+    let conn = match open() {
+        Ok(c) => c,
+        Err(_) => return 0.0,
+    };
+    let (start, end) = range_bounds("today");
+    conn.query_row(
+        "SELECT COALESCE(SUM(cost_usd), 0.0)
+         FROM usage_events
+         WHERE ts BETWEEN ?1 AND ?2",
+        params![start, end],
+        |row| row.get::<_, f64>(0),
+    )
+    .unwrap_or(0.0)
+}
+
+#[tauri::command]
+pub fn get_today_cost_usd() -> Result<f64, String> {
+    Ok(today_cost_usd())
+}
+
 #[tauri::command]
 pub fn get_summary(range: String) -> Result<Summary, String> {
     let conn = open().map_err(|e| e.to_string())?;

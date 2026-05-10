@@ -10,6 +10,7 @@ use serde::Serialize;
 use crate::db;
 
 /// 우리 Supabase usage_aggregates row 형태
+/// total_tokens = input + output + cache_read + cache_write — 대시보드 sumIO와 동일.
 #[derive(Debug, Serialize)]
 struct UsageAggregate {
     user_id: String,
@@ -17,6 +18,7 @@ struct UsageAggregate {
     source: String,
     total_input: i64,
     total_output: i64,
+    total_tokens: i64,
     total_cost_usd: f64,
 }
 
@@ -48,14 +50,16 @@ fn read_usage_aggregates(user_id: &str) -> Result<Vec<UsageAggregate>, String> {
     let conn = db::open().map_err(|e| e.to_string())?;
     let mut stmt = conn
         .prepare(
-            "SELECT ts, source, input_tokens, output_tokens, cost_usd
+            "SELECT ts, source, input_tokens, output_tokens,
+                    cache_read, cache_write, cost_usd
              FROM usage_events",
         )
         .map_err(|e| e.to_string())?;
 
-    // (date, source) → (input, output, cost) 합산.
+    // (date, source) → (input, output, total_tokens, cost) 합산.
+    // total_tokens = input + output + cache_read + cache_write (대시보드 sumIO와 동일).
     use std::collections::HashMap;
-    let mut acc: HashMap<(String, String), (i64, i64, f64)> = HashMap::new();
+    let mut acc: HashMap<(String, String), (i64, i64, i64, f64)> = HashMap::new();
     let rows = stmt
         .query_map([], |row| {
             Ok((
@@ -63,29 +67,37 @@ fn read_usage_aggregates(user_id: &str) -> Result<Vec<UsageAggregate>, String> {
                 row.get::<_, String>(1)?,
                 row.get::<_, Option<i64>>(2)?,
                 row.get::<_, Option<i64>>(3)?,
-                row.get::<_, Option<f64>>(4)?,
+                row.get::<_, Option<i64>>(4)?,
+                row.get::<_, Option<i64>>(5)?,
+                row.get::<_, Option<f64>>(6)?,
             ))
         })
         .map_err(|e| e.to_string())?;
 
     for r in rows.flatten() {
-        let (ts, source, inp, out, cost) = r;
+        let (ts, source, inp, out, cr, cw, cost) = r;
         if let Some(date) = local_date_string(ts) {
-            let entry = acc.entry((date, source)).or_insert((0, 0, 0.0));
-            entry.0 += inp.unwrap_or(0);
-            entry.1 += out.unwrap_or(0);
-            entry.2 += cost.unwrap_or(0.0);
+            let entry = acc.entry((date, source)).or_insert((0, 0, 0, 0.0));
+            let i = inp.unwrap_or(0);
+            let o = out.unwrap_or(0);
+            let cre = cr.unwrap_or(0);
+            let cwr = cw.unwrap_or(0);
+            entry.0 += i;
+            entry.1 += o;
+            entry.2 += i + o + cre + cwr;
+            entry.3 += cost.unwrap_or(0.0);
         }
     }
 
     Ok(acc
         .into_iter()
-        .map(|((date, source), (inp, out, cost))| UsageAggregate {
+        .map(|((date, source), (inp, out, total, cost))| UsageAggregate {
             user_id: user_id.to_string(),
             date,
             source,
             total_input: inp,
             total_output: out,
+            total_tokens: total,
             total_cost_usd: cost,
         })
         .collect())

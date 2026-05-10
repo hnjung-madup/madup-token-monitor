@@ -1,10 +1,18 @@
-import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { useState } from "react";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { Avatar } from "@/components/Avatar";
-import { buildMockLeaderboard } from "@/mocks/usageMock";
-import { formatTokens, formatUSD } from "@/lib/format";
-import type { LeaderboardEntry } from "@/types/models";
+import { formatUSD, formatTokens } from "@/lib/format";
+import {
+  useCompanyLeaderboard,
+  type CompanyLeaderboardEntry,
+  type LeaderboardRange,
+} from "@/hooks/useUsage";
+
+const TABS: { id: LeaderboardRange; label: string }[] = [
+  { id: "today", label: "Today" },
+  { id: "week", label: "This Week" },
+  { id: "month", label: "This Month" },
+];
 
 function MedalIcon({ rank }: { rank: 1 | 2 | 3 }) {
   const palette = {
@@ -14,7 +22,13 @@ function MedalIcon({ rank }: { rank: 1 | 2 | 3 }) {
   }[rank];
 
   return (
-    <svg width={28} height={32} viewBox="0 0 28 32" aria-label={`${rank}위`} className="shrink-0">
+    <svg
+      width={22}
+      height={26}
+      viewBox="0 0 28 32"
+      aria-label={`${rank}위`}
+      className="shrink-0"
+    >
       <path d="M5 2 L11 14 L17 14 L23 2 Z" fill={palette.ribbon} />
       <circle cx="14" cy="20" r="10" fill={palette.bg} stroke={palette.ring} strokeWidth="1.5" />
       <text
@@ -35,44 +49,44 @@ function MedalIcon({ rank }: { rank: 1 | 2 | 3 }) {
 function RankCell({ rank }: { rank: number }) {
   if (rank <= 3) return <MedalIcon rank={rank as 1 | 2 | 3} />;
   return (
-    <span className="hp-display-xs text-graphite font-semibold w-7 text-center">
+    <span className="text-[13px] text-graphite font-semibold w-6 text-center">
       {rank}
     </span>
   );
 }
 
-function Row({ entry, isMine }: { entry: LeaderboardEntry; isMine: boolean }) {
+function Row({ entry, isMine }: { entry: CompanyLeaderboardEntry; isMine: boolean }) {
   return (
     <div
-      className={`grid grid-cols-[40px_44px_1fr_auto_auto] items-center gap-4 px-5 py-3 rounded-md border ${
-        isMine
-          ? "bg-primary-soft/40 border-primary/30"
-          : "bg-canvas border-transparent hover:bg-cloud"
+      className={`grid grid-cols-[28px_36px_1fr_auto] items-center gap-2 px-2 py-2 rounded-md ${
+        isMine ? "bg-primary-soft/40" : "hover:bg-cloud"
       } transition-colors`}
     >
       <div className="flex items-center justify-center">
         <RankCell rank={entry.rank} />
       </div>
-      <Avatar src={entry.avatar_url} name={entry.display_name} size={40} rounded="full" />
+      <Avatar
+        src={entry.avatar_url}
+        name={entry.display_name}
+        size={32}
+        rounded="full"
+      />
       <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <p className="hp-body-emphasis text-ink truncate">{entry.display_name}</p>
+        <p className="text-[13px] font-semibold text-ink truncate flex items-center gap-1.5">
+          {entry.display_name}
           {isMine && (
-            <span className="text-[10px] font-bold tracking-[0.16em] uppercase text-primary px-1.5 py-0.5 rounded bg-primary-soft">
+            <span className="text-[9px] font-bold tracking-[0.14em] uppercase text-primary px-1 py-0.5 rounded bg-primary-soft">
               나
             </span>
           )}
-        </div>
-        <p className="hp-caption-sm text-graphite mt-0.5">
-          {entry.message_count.toLocaleString("ko-KR")} 메시지
+        </p>
+        <p className="text-[10px] text-graphite mt-0.5">
+          {formatUSD(entry.total_cost)}
         </p>
       </div>
       <div className="text-right tabular-nums">
-        <p className="hp-display-xs text-ink leading-none">
+        <p className="text-[13px] font-bold text-primary leading-none">
           {formatTokens(entry.total_tokens)}
-        </p>
-        <p className="hp-caption-sm text-graphite mt-1">
-          {formatUSD(entry.cost_usd)}
         </p>
       </div>
     </div>
@@ -80,108 +94,125 @@ function Row({ entry, isMine }: { entry: LeaderboardEntry; isMine: boolean }) {
 }
 
 export default function Leaderboard() {
-  const { t } = useTranslation();
+  const [range, setRange] = useState<LeaderboardRange>("week");
   const { user } = useAuthUser();
-  const [data, setData] = useState<LeaderboardEntry[]>([]);
+  const { data, error, isLoading, isFetching, refetch } = useCompanyLeaderboard(range);
+  const errorMessage = error?.message ?? null;
+  const isMissingFunction =
+    !!errorMessage && /function .*get_top_users/i.test(errorMessage);
 
-  useEffect(() => {
-    setData(buildMockLeaderboard(user?.email));
-  }, [user?.email]);
+  const myHandle = user?.slackHandle ?? (user?.email ? user.email.split("@")[0] : null);
+  const myName = user?.name ?? null;
+  const isMineEntry = (entry: CompanyLeaderboardEntry) =>
+    !!myHandle && (entry.display_name === myHandle || entry.display_name === myName);
 
-  const myHandle = user?.email ? user.email.split("@")[0] : null;
-  const myRank = data.find((d) => d.display_name === myHandle);
-  const top3 = data.slice(0, 3);
-  const rest = data.slice(3);
+  const entries = data ?? [];
+  const myRank = entries.find(isMineEntry);
+  const totalUsers = entries.length;
 
   return (
-    <div className="px-10 py-10 max-w-[1100px] mx-auto space-y-10">
-      <header className="flex items-end justify-between gap-6 flex-wrap">
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <p className="hp-eyebrow">Internal Ranking · 30 days</p>
-            <span className="text-[10px] tracking-[0.18em] uppercase font-bold px-2 py-0.5 rounded-full bg-bloom-rose text-bloom-deep">
-              Demo
+    <div className="px-4 py-4 max-w-full space-y-4">
+      {/* Tabs */}
+      <div className="flex items-center gap-1 p-1 bg-cloud rounded-lg">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setRange(tab.id)}
+            className={`flex-1 py-1.5 text-[11px] font-semibold rounded-md transition-colors ${
+              range === tab.id
+                ? "bg-primary text-on-primary shadow-sm"
+                : "text-graphite hover:text-ink"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Your rank card */}
+      <div className="hp-card-cloud p-3 flex items-center justify-between">
+        <div className="text-[12px]">
+          {myRank ? (
+            <>
+              <span className="text-graphite">Your Rank</span>{" "}
+              <span className="text-primary font-bold text-[15px] mx-1">
+                #{myRank.rank}
+              </span>{" "}
+              <span className="text-graphite">of {totalUsers}</span>
+            </>
+          ) : (
+            <span className="text-graphite">
+              {totalUsers > 0
+                ? `${totalUsers}명 집계 중 — 본인 데이터는 동기화 후 표시됩니다`
+                : "집계 데이터 대기 중"}
             </span>
-          </div>
-          <h1 className="hp-display-lg text-ink">{t("leaderboard.title")}</h1>
-          <p className="hp-body text-charcoal mt-2">
-            {t("leaderboard.subtitle")}
-          </p>
-          <p className="hp-caption text-graphite mt-1">
-            ※ 현재는 모의 데이터입니다. Supabase 집계 RPC 연동 후 실제 데이터로 대체됩니다.
-          </p>
+          )}
         </div>
-        {myRank && (
-          <div className="hp-card-cloud px-6 py-4 text-right">
-            <p className="hp-caption-sm uppercase tracking-[0.18em] font-bold text-graphite">
-              내 순위
+        <button
+          onClick={() => refetch()}
+          disabled={isFetching}
+          title="새로고침"
+          aria-label="새로고침"
+          className="w-8 h-8 rounded-md bg-canvas hover:bg-cloud border border-hairline flex items-center justify-center text-charcoal disabled:opacity-50 transition-colors"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            className={isFetching ? "animate-spin" : ""}
+          >
+            <path
+              d="M21 12a9 9 0 1 1-3.5-7.13"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+            <path
+              d="M21 4v5h-5"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      </div>
+
+      {/* List */}
+      <section className="hp-card-flat shadow-[0_2px_8px_rgba(26,26,26,0.06)] p-2">
+        {isLoading ? (
+          <p className="hp-caption text-graphite text-center py-8">불러오는 중...</p>
+        ) : isMissingFunction ? (
+          <div className="text-center py-6 px-3 space-y-2">
+            <p className="text-[12px] font-semibold text-[#dc2626]">
+              Supabase RPC <code className="font-mono">get_top_users</code>가 적용되지 않았습니다
             </p>
-            <p className="hp-display-md text-primary mt-1 leading-none">
-              {myRank.rank}
-              <span className="hp-display-xs text-graphite ml-1">위</span>
+            <p className="hp-caption text-graphite">
+              <code className="font-mono text-[10px]">supabase/migrations/0005_top_users.sql</code>를
+              <br />Supabase Studio SQL Editor에서 실행하거나{" "}
+              <code className="font-mono text-[10px]">supabase db push</code>로 적용하세요.
             </p>
+          </div>
+        ) : errorMessage ? (
+          <p className="hp-caption text-[#dc2626] text-center py-8 break-all px-3">
+            오류: {errorMessage}
+          </p>
+        ) : entries.length === 0 ? (
+          <p className="hp-caption text-graphite text-center py-8">
+            아직 집계 데이터가 없습니다
+          </p>
+        ) : (
+          <div className="space-y-0.5">
+            {entries.map((entry) => (
+              <Row
+                key={`${entry.rank}-${entry.display_name}`}
+                entry={entry}
+                isMine={isMineEntry(entry)}
+              />
+            ))}
           </div>
         )}
-      </header>
-
-      {/* Top 3 podium */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {top3.map((entry) => {
-          const isMine = entry.display_name === myHandle;
-          return (
-            <div
-              key={entry.user_id}
-              className={`hp-card-flat p-6 text-center shadow-[0_2px_8px_rgba(26,26,26,0.06)] ${
-                isMine ? "ring-2 ring-primary" : ""
-              }`}
-            >
-              <div className="flex justify-center mb-4">
-                <MedalIcon rank={entry.rank as 1 | 2 | 3} />
-              </div>
-              <Avatar
-                src={entry.avatar_url}
-                name={entry.display_name}
-                size={64}
-                rounded="full"
-                className="mx-auto"
-              />
-              <p className="hp-display-xs text-ink mt-3 truncate">
-                {entry.display_name}
-              </p>
-              <p className="hp-caption-sm text-graphite mt-1">
-                {entry.message_count.toLocaleString("ko-KR")} 메시지
-              </p>
-              <div className="mt-4 pt-4 border-t border-hairline">
-                <p className="hp-display-md text-primary leading-none">
-                  {formatTokens(entry.total_tokens)}
-                </p>
-                <p className="hp-caption text-graphite mt-2">
-                  {formatUSD(entry.cost_usd)}
-                </p>
-              </div>
-            </div>
-          );
-        })}
-      </section>
-
-      {/* 4 - N table */}
-      <section className="hp-card-flat shadow-[0_2px_8px_rgba(26,26,26,0.06)] p-3">
-        <div className="grid grid-cols-[40px_44px_1fr_auto_auto] items-center gap-4 px-5 py-2 text-[10px] tracking-[0.18em] uppercase font-bold text-graphite">
-          <span className="text-center">#</span>
-          <span />
-          <span>{t("leaderboard.user")}</span>
-          <span className="text-right">토큰</span>
-          <span />
-        </div>
-        <div className="space-y-1">
-          {rest.map((entry) => (
-            <Row
-              key={entry.user_id}
-              entry={entry}
-              isMine={entry.display_name === myHandle}
-            />
-          ))}
-        </div>
       </section>
     </div>
   );

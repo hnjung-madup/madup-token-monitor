@@ -76,13 +76,16 @@ export function MessageInput({ onSend, disabled }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="px-6 py-4 border-t border-hairline bg-canvas">
+    <form
+      onSubmit={handleSubmit}
+      className="px-2 py-2 border-t border-hairline bg-canvas"
+    >
       {imagePreview && (
-        <div className="relative inline-block mb-3">
+        <div className="relative inline-block mb-2 ml-1">
           <img
             src={imagePreview}
             alt="미리보기"
-            className="h-20 rounded-md border border-hairline"
+            className="h-16 rounded-md border border-hairline"
           />
           <button
             type="button"
@@ -90,22 +93,24 @@ export function MessageInput({ onSend, disabled }: Props) {
               setImagePreview(null);
               if (fileRef.current) fileRef.current.value = "";
             }}
-            className="absolute -top-2 -right-2 w-5 h-5 bg-ink text-on-ink rounded-full text-[11px] flex items-center justify-center"
+            className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-ink text-on-ink rounded-full text-[11px] flex items-center justify-center"
           >
             ×
           </button>
         </div>
       )}
-      {imageError && <p className="text-[12px] text-bloom-deep mb-2">{imageError}</p>}
-      <div className="flex gap-3 items-end">
+      {imageError && (
+        <p className="text-[11px] text-bloom-deep mb-1 px-1">{imageError}</p>
+      )}
+      <div className="flex gap-1.5 items-end">
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          className="p-2 text-graphite hover:text-primary transition-colors rounded-md"
+          className="shrink-0 p-1.5 text-graphite hover:text-primary transition-colors rounded-md disabled:opacity-50"
           title="이미지 첨부"
           disabled={disabled}
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -128,17 +133,27 @@ export function MessageInput({ onSend, disabled }: Props) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="메시지 입력 (Enter 전송, Shift+Enter 줄바꿈)"
-          className="flex-1 resize-none rounded-md border border-steel px-4 py-2.5 text-[14px] text-ink focus:outline-none focus:border-ink transition-colors min-h-[44px] max-h-32 placeholder:text-graphite"
+          placeholder="메시지 입력"
+          title="Enter: 전송 · Shift+Enter: 줄바꿈"
+          className="flex-1 min-w-0 resize-none rounded-md border border-hairline px-2.5 py-1.5 text-[13px] leading-5 text-ink focus:outline-none focus:border-primary transition-colors h-[34px] max-h-28 placeholder:text-graphite"
           rows={1}
           disabled={disabled || sending}
         />
         <button
           type="submit"
           disabled={disabled || sending || (!text.trim() && !imagePreview)}
-          className="hp-btn-primary !h-[44px] !px-6"
+          aria-label="전송"
+          className="shrink-0 h-[34px] w-[34px] rounded-md bg-primary text-on-primary hover:bg-primary-bright disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
         >
-          전송
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <path
+              d="M2 8L14 2L8 14L7 9L2 8Z"
+              fill="currentColor"
+              stroke="currentColor"
+              strokeWidth="1.2"
+              strokeLinejoin="round"
+            />
+          </svg>
         </button>
       </div>
     </form>

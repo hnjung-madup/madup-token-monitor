@@ -18,25 +18,27 @@ export function MessageBubble({ message, isMine, myAvatarUrl, onDelete }: Props)
   const avatarUrl = isMine ? myAvatarUrl ?? null : null;
 
   return (
-    <div className={`flex gap-3 mb-4 ${isMine ? "flex-row-reverse" : "flex-row"}`}>
+    <div className={`flex gap-2 mb-2.5 min-w-0 ${isMine ? "flex-row-reverse" : "flex-row"}`}>
       <Avatar
         src={avatarUrl}
         name={displayName}
-        size={36}
+        size={28}
         rounded="md"
         title={message.user_email}
       />
-      <div className={`max-w-[70%] ${isMine ? "items-end" : "items-start"} flex flex-col`}>
-        <span className="text-[12px] font-semibold text-charcoal mb-1 flex items-center gap-1">
+      <div
+        className={`min-w-0 max-w-[78%] ${isMine ? "items-end" : "items-start"} flex flex-col`}
+      >
+        <span className="text-[11px] font-semibold text-charcoal mb-0.5 flex items-center gap-1">
           {displayName}
           {isMine && (
-            <span className="text-[9px] tracking-[0.16em] uppercase font-bold text-primary px-1 py-0.5 rounded bg-primary-soft">
+            <span className="text-[9px] tracking-[0.16em] uppercase font-bold text-primary px-1 py-0 rounded bg-primary-soft">
               나
             </span>
           )}
         </span>
         <div
-          className={`px-4 py-2.5 rounded-lg text-[14px] break-words whitespace-pre-wrap leading-relaxed ${
+          className={`px-3 py-1.5 rounded-lg text-[13px] break-words whitespace-pre-wrap leading-relaxed max-w-full ${
             isMine
               ? "bg-primary text-on-primary rounded-tr-[2px]"
               : "bg-cloud text-ink rounded-tl-[2px] border border-hairline"
@@ -46,18 +48,18 @@ export function MessageBubble({ message, isMine, myAvatarUrl, onDelete }: Props)
             <img
               src={message.image_url}
               alt="첨부 이미지"
-              className="max-w-full rounded-md mb-1"
-              style={{ maxHeight: 240 }}
+              className="max-w-full h-auto rounded-md mb-1 block"
+              style={{ maxHeight: 200 }}
             />
           )}
           {message.body}
         </div>
-        <div className="flex items-center gap-2 mt-1">
-          <span className="text-[11px] text-graphite">{formatTime(message.created_at)}</span>
+        <div className="flex items-center gap-2 mt-0.5">
+          <span className="text-[10px] text-graphite">{formatTime(message.created_at)}</span>
           {isMine && onDelete && (
             <button
               onClick={() => onDelete(message.id)}
-              className="text-[11px] text-graphite hover:text-bloom-deep transition-colors"
+              className="text-[10px] text-graphite hover:text-bloom-deep transition-colors"
               title="삭제"
             >
               삭제

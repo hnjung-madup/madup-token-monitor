@@ -1,65 +1,50 @@
-import { useTranslation } from "react-i18next";
-import { useTopPlugins } from "@/hooks/useUsage";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useTopPlugins, useCompanyTopPlugins } from "@/hooks/useUsage";
+import { MinimalBarList } from "@/components/MinimalBarList";
 
 export function Plugins() {
-  const { t } = useTranslation();
-  const { data: plugins, isLoading } = useTopPlugins("30d");
+  const { data: myPlugins, isFetching: myFetching } = useTopPlugins("30d");
+  const { data: companyPlugins, isFetching: compFetching } =
+    useCompanyTopPlugins(30);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64 text-graphite text-sm">
-        불러오는 중...
-      </div>
-    );
-  }
-
-  if (!plugins || plugins.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-32 text-graphite text-sm">
-        {t("plugins.empty")}
-      </div>
-    );
-  }
-
-  const maxCount = Math.max(...plugins.map((p) => p.count), 1);
+  const refreshing = myFetching || compFetching;
+  const myItems = (myPlugins ?? []).map((p) => ({
+    label: p.plugin_id,
+    value: p.count,
+  }));
+  const teamItems = (companyPlugins ?? []).map((p) => ({
+    label: p.plugin_id,
+    value: p.count,
+  }));
 
   return (
-    <div className="px-10 py-10 max-w-[1366px] mx-auto space-y-8">
+    <div className="px-4 py-4 max-w-full space-y-5">
       <header>
-        <p className="hp-eyebrow mb-3">Plugin Activity · 30 days</p>
-        <h1 className="hp-display-lg text-ink">{t("plugins.title")}</h1>
+        <div className="flex items-center justify-between mb-1">
+          <p className="hp-eyebrow">Plugins · 30 days</p>
+          {refreshing && (
+            <span className="text-[10px] text-graphite italic">갱신 중…</span>
+          )}
+        </div>
+        <h1 className="hp-display-md text-ink">활성 플러그인</h1>
       </header>
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {plugins.map((plugin) => {
-          const ratio = plugin.count / maxCount;
-          return (
-            <Card key={plugin.plugin_id}>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 normal-case tracking-normal text-ink !text-[14px] font-semibold">
-                  <span className="w-2 h-2 rounded-full bg-primary inline-block" />
-                  {plugin.plugin_id}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="hp-display-md text-ink">
-                  {plugin.count.toLocaleString("ko-KR")}
-                </p>
-                <p className="hp-caption text-graphite mt-1">
-                  {t("plugins.totalCalls")}
-                </p>
-                <div className="mt-4 h-2 rounded-full bg-cloud overflow-hidden">
-                  <div
-                    className="h-full bg-primary"
-                    style={{ width: `${ratio * 100}%` }}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+      <section className="hp-card-flat shadow-[0_2px_8px_rgba(26,26,26,0.06)] p-4">
+        <MinimalBarList
+          title="내 플러그인 TOP 10"
+          items={myItems}
+          color="#0aa9c9"
+          emptyMessage="활성 플러그인이 없습니다"
+        />
+      </section>
+
+      <section className="hp-card-flat shadow-[0_2px_8px_rgba(26,26,26,0.06)] p-4">
+        <MinimalBarList
+          title="사내 플러그인 TOP 10"
+          items={teamItems}
+          color="#f5a524"
+          emptyMessage="팀 데이터 집계 중입니다"
+        />
+      </section>
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { onOpenUrl, getCurrent } from "@tauri-apps/plugin-deep-link";
 import "@/i18n/index";
 import { Dashboard } from "@/pages/Dashboard";
 import MCP from "@/pages/MCP";
+import Plugins from "@/pages/Plugins";
 import Leaderboard from "@/pages/Leaderboard";
 import Chat from "@/pages/Chat";
 import Settings from "@/pages/Settings";
@@ -18,7 +19,6 @@ import { handleAuthCallback, syncAggregatesNow } from "@/lib/auth";
 import { supabase, getProfile } from "@/lib/supabase";
 import { signOut } from "@/lib/supabase";
 import { useAuthUser } from "@/hooks/useAuthUser";
-import { Avatar } from "@/components/Avatar";
 
 // 캐시를 localStorage에 영속화 — 앱 재시작 시 옛 데이터를 즉시 표시하고 백그라운드 refetch.
 // MCP / 사용량 페이지가 cold start에 즉시 보이도록 하는 핵심.
@@ -39,6 +39,7 @@ const persister = createSyncStoragePersister({
 const NAV_ITEMS = [
   { path: "/", label: "nav.dashboard" },
   { path: "/mcp", label: "nav.mcp" },
+  { path: "/plugins", label: "nav.plugins" },
   { path: "/leaderboard", label: "nav.leaderboard" },
   { path: "/chat", label: "nav.chat" },
   { path: "/settings", label: "nav.settings" },
@@ -56,9 +57,11 @@ function MadupMark({ size = 28 }: { size?: number }) {
   );
 }
 
-function UtilityStrip() {
-  const navigate = useNavigate();
+// 메뉴바 popover — 상단의 좁은 헤더가 드래그 영역 + 로고 + 액션 아이콘.
+// 클릭 가능 자식에는 data-tauri-drag-region을 두지 않아 드래그가 발동하지 않음.
+function PopoverHeader() {
   const { user } = useAuthUser();
+  const navigate = useNavigate();
 
   async function handleSignOut() {
     await signOut();
@@ -66,89 +69,92 @@ function UtilityStrip() {
   }
 
   return (
-    <div className="hp-utility-strip flex items-center justify-between">
-      <span className="tracking-[0.16em] uppercase font-bold text-[11px]">
-        Madup · Internal Tool · KR
-      </span>
-      <div className="flex items-center gap-5 text-[12px]">
-        <span className="hidden md:inline text-steel">For Madup Members</span>
-        {user ? (
-          <>
-            <div className="flex items-center gap-2">
-              <Avatar
-                src={user.avatarUrl}
-                name={user.name}
-                size={22}
-                className="ring-1 ring-on-ink/20"
+    <header
+      data-tauri-drag-region
+      style={{ cursor: "grab" }}
+      className="flex items-center justify-between px-3 py-2 border-b border-hairline bg-canvas select-none"
+    >
+      <div data-tauri-drag-region className="flex items-center gap-2 min-w-0">
+        <MadupMark size={22} />
+        <div data-tauri-drag-region className="leading-tight min-w-0">
+          <p data-tauri-drag-region className="text-[12px] font-semibold text-ink truncate">
+            매드업 토큰 모니터
+          </p>
+          <p data-tauri-drag-region className="text-[10px] text-graphite truncate">
+            {user?.email ?? "로그인 필요"}
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center gap-1 shrink-0">
+        <button
+          onClick={() => navigate("/settings")}
+          title="설정"
+          className="w-7 h-7 rounded-md hover:bg-cloud transition-colors flex items-center justify-center text-graphite hover:text-ink"
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <path
+              d="M8 5.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5z"
+              stroke="currentColor"
+              strokeWidth="1.3"
+            />
+            <path
+              d="M13.5 8c0-.4-.04-.78-.12-1.16l1.4-1.07-1.5-2.6-1.66.62a5.5 5.5 0 00-2.02-1.16L9.3 1H6.7l-.3 1.63a5.5 5.5 0 00-2.02 1.16l-1.66-.62-1.5 2.6 1.4 1.07A5.6 5.6 0 002.5 8c0 .4.04.78.12 1.16l-1.4 1.07 1.5 2.6 1.66-.62a5.5 5.5 0 002.02 1.16L6.7 15h2.6l.3-1.63a5.5 5.5 0 002.02-1.16l1.66.62 1.5-2.6-1.4-1.07c.08-.38.12-.76.12-1.16z"
+              stroke="currentColor"
+              strokeWidth="1.3"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+        {user && (
+          <button
+            onClick={handleSignOut}
+            title="로그아웃"
+            className="w-7 h-7 rounded-md hover:bg-cloud transition-colors flex items-center justify-center text-graphite hover:text-ink"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <path
+                d="M6 3H3v10h3M10 5l3 3-3 3M13 8H6"
+                stroke="currentColor"
+                strokeWidth="1.3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               />
-              <span className="text-on-ink/85">{user.email}</span>
-            </div>
-            <button
-              onClick={handleSignOut}
-              className="uppercase tracking-[0.12em] font-semibold hover:text-primary-bright transition-colors"
-            >
-              Sign out
-            </button>
-          </>
-        ) : (
-          <span className="text-steel">Not signed in</span>
+            </svg>
+          </button>
         )}
       </div>
-    </div>
+    </header>
   );
 }
 
-function Sidebar() {
+function TabBar() {
   const { t } = useTranslation();
   return (
-    <aside className="w-60 shrink-0 border-r border-hairline bg-canvas flex flex-col">
-      <div className="px-6 pt-7 pb-6 border-b border-hairline">
-        <div className="flex items-center gap-2.5">
-          <MadupMark size={32} />
-          <div>
-            <p className="hp-display-xs leading-none text-ink">madup</p>
-            <p className="text-[10px] tracking-[0.18em] uppercase font-bold text-graphite mt-1">
-              Token Monitor
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <nav className="flex-1 px-4 py-6 flex flex-col gap-0.5">
-        <p className="px-3 mb-2 text-[10px] tracking-[0.18em] uppercase font-bold text-graphite">
-          Workspace
-        </p>
-        {NAV_ITEMS.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            end={item.path === "/"}
-            className={({ isActive }) =>
-              `relative flex items-center px-3 py-2.5 text-[14px] font-medium transition-colors rounded-md ${
-                isActive
-                  ? "text-ink bg-cloud"
-                  : "text-charcoal hover:text-ink hover:bg-cloud/60"
-              }`
-            }
-          >
-            {({ isActive }) => (
-              <>
-                {isActive && (
-                  <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-primary rounded-full" />
-                )}
-                <span className="ml-1">{t(item.label)}</span>
-              </>
-            )}
-          </NavLink>
-        ))}
-      </nav>
-
-      <div className="px-6 py-4 border-t border-hairline">
-        <p className="text-[11px] text-graphite leading-relaxed">
-          v0.1.0 · 로컬 데이터는<br />이 디바이스에만 저장됩니다.
-        </p>
-      </div>
-    </aside>
+    <nav className="flex border-b border-hairline bg-canvas">
+      {NAV_ITEMS.filter((item) => item.path !== "/settings").map((item) => (
+        <NavLink
+          key={item.path}
+          to={item.path}
+          end={item.path === "/"}
+          className={({ isActive }) =>
+            `flex-1 text-center py-2 text-[12px] font-semibold transition-colors relative ${
+              isActive
+                ? "text-ink"
+                : "text-graphite hover:text-ink"
+            }`
+          }
+        >
+          {({ isActive }) => (
+            <>
+              <span>{t(item.label)}</span>
+              {isActive && (
+                <span className="absolute left-3 right-3 bottom-0 h-[2px] bg-primary rounded-full" />
+              )}
+            </>
+          )}
+        </NavLink>
+      ))}
+    </nav>
   );
 }
 
@@ -156,20 +162,19 @@ function Layout() {
   return (
     <AuthGuard>
       <div className="flex flex-col h-screen overflow-hidden bg-canvas">
-        <UtilityStrip />
-        <div className="flex flex-1 overflow-hidden">
-          <Sidebar />
-          <main className="flex-1 overflow-y-auto bg-cloud">
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/mcp" element={<MCP />} />
-              <Route path="/leaderboard" element={<Leaderboard />} />
-              <Route path="/chat" element={<Chat />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/settings/profile" element={<Profile />} />
-            </Routes>
-          </main>
-        </div>
+        <PopoverHeader />
+        <TabBar />
+        <main className="flex-1 overflow-y-auto bg-cloud">
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/mcp" element={<MCP />} />
+            <Route path="/plugins" element={<Plugins />} />
+            <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/chat" element={<Chat />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/settings/profile" element={<Profile />} />
+          </Routes>
+        </main>
       </div>
     </AuthGuard>
   );

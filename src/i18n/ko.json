@@ -49,7 +49,7 @@
   },
   "leaderboard": {
     "title": "사내 리더보드",
-    "subtitle": "최근 30일 토큰 사용량 순위",
+    "subtitle": "최근 7일 비용 기준 사내 TOP 10",
     "you": "나",
     "messages": "메시지",
     "rank": "순위",

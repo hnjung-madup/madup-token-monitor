@@ -6,6 +6,7 @@ pub mod commands;
 pub mod db;
 pub mod models;
 pub mod parser;
+pub mod plugins;
 pub mod pricing;
 pub mod watcher;
 
@@ -27,13 +28,24 @@ fn greet(name: &str) -> String {
     format!("안녕하세요, {}! Rust에서 보내는 인사입니다.", name)
 }
 
+/// 로컬 데이터(SQLite) 디렉토리 경로. Settings 화면의 "데이터 폴더 열기"가 사용.
+#[tauri::command]
+fn get_data_dir() -> Result<String, String> {
+    db::db_path()
+        .parent()
+        .map(|p| p.to_string_lossy().to_string())
+        .ok_or_else(|| "데이터 디렉토리를 찾을 수 없습니다".into())
+}
+
 // ============================================================
 // [COMMAND MARKER] W2: get_summary, get_timeseries, get_top_mcp, get_top_plugins
 // invoke_handler에 해당 커맨드 추가 필요
 // ============================================================
 
 use aggregator::sync_aggregates_now;
-use commands::{get_heatmap, get_summary, get_timeseries, get_top_mcp, get_top_plugins};
+use commands::{
+    get_heatmap, get_summary, get_timeseries, get_today_cost_usd, get_top_mcp, get_top_plugins,
+};
 use oauth_usage::{get_oauth_usage, refresh_oauth_usage};
 use tauri::Manager;
 
@@ -64,20 +76,36 @@ pub fn run() {
             get_top_mcp,
             get_top_plugins,
             get_heatmap,
+            get_today_cost_usd,
+            get_data_dir,
             sync_aggregates_now,
             get_oauth_usage,
             refresh_oauth_usage,
         ])
         .setup(|app| {
             tray::setup_tray(app.handle())?;
+            tray::spawn_title_updater(app.handle().clone());
             Ok(())
         })
-        // 윈도우 close 버튼을 누르면 종료 대신 hide. 트레이에서 종료 메뉴로만 진짜 종료.
-        .on_window_event(|window, event| {
-            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+        // popover 동작: 포커스를 잃으면 자동으로 숨김 (메뉴바 드랍다운 UX).
+        // CloseRequested는 decorations:false라 거의 발생하지 않지만, 발생하면 hide로 흡수.
+        // Focused(false)는 헤더 드래그 시작 등으로도 잠깐 발생할 수 있어서 200ms 지연 후
+        // 여전히 unfocused일 때만 hide — 클릭&드래그가 중간에 끊기지 않도록.
+        .on_window_event(|window, event| match event {
+            tauri::WindowEvent::CloseRequested { api, .. } => {
                 let _ = window.hide();
                 api.prevent_close();
             }
+            tauri::WindowEvent::Focused(false) => {
+                let w = window.clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(200));
+                    if !w.is_focused().unwrap_or(true) {
+                        let _ = w.hide();
+                    }
+                });
+            }
+            _ => {}
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

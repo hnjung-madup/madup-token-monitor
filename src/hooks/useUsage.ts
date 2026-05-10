@@ -157,3 +157,81 @@ export function useCompanyTopMcp(rangeDays = 30) {
     refetchInterval: 5 * 60_000,
   });
 }
+
+// Supabase RPC `get_top_plugins` 결과 row 형태
+interface CompanyPluginRow {
+  plugin_id: string;
+  total_count: number;
+}
+
+export function useCompanyTopPlugins(rangeDays = 30) {
+  return useQuery({
+    queryKey: ["company_top_plugins", rangeDays],
+    queryFn: async (): Promise<PluginUsage[]> => {
+      const { data, error } = await supabase.rpc("get_top_plugins", {
+        range_days: rangeDays,
+      });
+      if (error) {
+        console.warn("[company_top_plugins] RPC error:", error.message);
+        return [];
+      }
+      const rows = (data ?? []) as CompanyPluginRow[];
+      return rows.map((r) => ({ plugin_id: r.plugin_id, count: Number(r.total_count) }));
+    },
+    staleTime: 5 * 60_000,
+    refetchInterval: 5 * 60_000,
+  });
+}
+
+// Supabase RPC `get_top_users(range_days, max_rows)` 결과 row 형태
+interface CompanyLeaderboardRow {
+  display_name: string;
+  avatar_url: string | null;
+  total_cost: number;
+  total_tokens: number;
+}
+
+export interface CompanyLeaderboardEntry {
+  rank: number;
+  display_name: string;
+  avatar_url: string | null;
+  total_cost: number;
+  total_tokens: number;
+}
+
+export type LeaderboardRange = "today" | "week" | "month";
+
+const RANGE_DAYS: Record<LeaderboardRange, number> = {
+  today: 1,
+  week: 7,
+  month: 30,
+};
+
+export function useCompanyLeaderboard(range: LeaderboardRange = "week") {
+  return useQuery<CompanyLeaderboardEntry[], Error>({
+    queryKey: ["company_leaderboard", range],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_top_users", {
+        range_days: RANGE_DAYS[range],
+        max_rows: 50,
+      });
+      if (error) {
+        // RPC 미존재(미적용 마이그레이션)/RLS 문제 등을 페이지에서 보여주기 위해 throw.
+        throw new Error(error.message);
+      }
+      const rows = (data ?? []) as CompanyLeaderboardRow[];
+      return rows.map((r, i) => ({
+        rank: i + 1,
+        display_name: r.display_name,
+        avatar_url: r.avatar_url,
+        total_cost: Number(r.total_cost),
+        total_tokens: Number(r.total_tokens),
+      }));
+    },
+    // 익명 토글 등 프로필 변경이 빠르게 반영돼야 하므로 staleTime은 짧게.
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+    retry: 0,
+  });
+}

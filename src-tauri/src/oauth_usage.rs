@@ -41,10 +41,20 @@ struct ApiResponse {
     seven_day_opus: Option<ApiUsageWindow>,
 }
 
+// API 가 일부 window를 `null` 또는 부분적으로 채워 반환하는 케이스가 있어 모든 필드를 Option으로.
 #[derive(Debug, Deserialize)]
 struct ApiUsageWindow {
-    utilization: f64,
-    resets_at: String,
+    utilization: Option<f64>,
+    resets_at: Option<String>,
+}
+
+impl ApiUsageWindow {
+    fn into_usage(self) -> Option<UsageWindow> {
+        Some(UsageWindow {
+            utilization: self.utilization?,
+            resets_at: self.resets_at?,
+        })
+    }
 }
 
 fn read_oauth_token() -> Option<String> {
@@ -120,22 +130,10 @@ fn fetch_usage_from_api(token: &str) -> Result<OAuthUsage, String> {
         Ok(r) => {
             let api: ApiResponse = r.into_json().map_err(|e| format!("JSON parse: {e}"))?;
             Ok(OAuthUsage {
-                five_hour: api.five_hour.map(|w| UsageWindow {
-                    utilization: w.utilization,
-                    resets_at: w.resets_at,
-                }),
-                seven_day: api.seven_day.map(|w| UsageWindow {
-                    utilization: w.utilization,
-                    resets_at: w.resets_at,
-                }),
-                seven_day_sonnet: api.seven_day_sonnet.map(|w| UsageWindow {
-                    utilization: w.utilization,
-                    resets_at: w.resets_at,
-                }),
-                seven_day_opus: api.seven_day_opus.map(|w| UsageWindow {
-                    utilization: w.utilization,
-                    resets_at: w.resets_at,
-                }),
+                five_hour: api.five_hour.and_then(ApiUsageWindow::into_usage),
+                seven_day: api.seven_day.and_then(ApiUsageWindow::into_usage),
+                seven_day_sonnet: api.seven_day_sonnet.and_then(ApiUsageWindow::into_usage),
+                seven_day_opus: api.seven_day_opus.and_then(ApiUsageWindow::into_usage),
                 fetched_at: chrono::Local::now().to_rfc3339(),
                 is_stale: false,
             })

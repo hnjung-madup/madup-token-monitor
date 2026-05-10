@@ -65,6 +65,43 @@ fn migrate(conn: &Connection) -> Result<()> {
     // 옛 (source, session_id, ts, model, tokens) UNIQUE INDEX는 약해서 중복 허용 — 제거
     let _ = conn.execute("DROP INDEX IF EXISTS uniq_usage_event", []);
 
+    // ── 일회성 plugin_id 청소 ───────────────────────────────────────────────
+    // 옛 휴리스틱: 하이픈 있는 mcp_server를 그대로 plugin_id로 복사 (mcp-atlassian, slack-bot,
+    // plugin_oh-my-claudecode_t 등 → 모두 plugin으로 잘못 카운트). 새 파서는 plugin_<name>_t
+    // 형식만 plugin_id로 인정. 옛 row 정리:
+    //   1) plugin_id == mcp_server 인 row → plugin_id NULL (대부분 일반 MCP 서버였음)
+    //   2) mcp_server 가 plugin_<name>_t 형식이면 <name> 만 추출해서 plugin_id에 재기입
+    let _ = conn.execute(
+        "UPDATE tool_calls SET plugin_id = NULL
+         WHERE plugin_id IS NOT NULL AND plugin_id = mcp_server",
+        [],
+    );
+    // SQLite SUBSTR(s, start, length) — 1-indexed. 'plugin_'(7) 다음 시작, 끝 '_t'(2) 제거.
+    let _ = conn.execute(
+        "UPDATE tool_calls
+         SET plugin_id = SUBSTR(mcp_server, 8, LENGTH(mcp_server) - 9)
+         WHERE mcp_server LIKE 'plugin_%_t'
+           AND LENGTH(mcp_server) > 9",
+        [],
+    );
+    // Claude Code 플러그인은 MCP TOP에 보이지 않게 mcp_server NULL로 정리.
+    let _ = conn.execute(
+        "UPDATE tool_calls
+         SET mcp_server = NULL
+         WHERE mcp_server LIKE 'plugin_%_t'",
+        [],
+    );
+    // 플러그인 레지스트리(~/.claude/plugins/cache 폴더명) 기준으로 옛 분류 보정 —
+    // 설치된 플러그인 ID와 일치하는 mcp_server 는 plugin_id 로 이동.
+    for plugin_id in crate::plugins::known_plugin_ids() {
+        let _ = conn.execute(
+            "UPDATE tool_calls
+             SET plugin_id = ?1, mcp_server = NULL
+             WHERE mcp_server = ?1",
+            params![plugin_id],
+        );
+    }
+
     Ok(())
 }
 

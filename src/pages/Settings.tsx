@@ -1,22 +1,115 @@
 import { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { openPath } from "@tauri-apps/plugin-opener";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  enable as enableAutostart,
+  disable as disableAutostart,
+  isEnabled as isAutostartEnabled,
+} from "@tauri-apps/plugin-autostart";
 import { supabase, getProfile, updateProfile } from "../lib/supabase";
 import { syncAggregatesNow, type SyncResult } from "../lib/auth";
 import { useAuthUser } from "../hooks/useAuthUser";
 import { Avatar } from "../components/Avatar";
 
+const IS_TAURI = "__TAURI_INTERNALS__" in window;
+
+// 설정 화면 진입 시 빈 값 깜빡임 방지 — 마지막에 본 값을 localStorage에 캐시.
+// 캐시값으로 즉시 렌더 → 백그라운드에서 진짜 값(Supabase / Tauri) 가져와 업데이트.
+const PROFILE_CACHE_PREFIX = "madup-token-monitor:profile:";
+const AUTOSTART_CACHE_KEY = "madup-token-monitor:autostart";
+const DATA_DIR_CACHE_KEY = "madup-token-monitor:dataDir";
+
+interface CachedProfile {
+  share_consent: boolean;
+  anonymized: boolean;
+}
+
+function readJson<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeJson(key: string, value: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // quota exceeded 등 — 캐시 실패는 조용히 무시
+  }
+}
+
 export default function Settings() {
   const { user } = useAuthUser();
-  const [shareConsent, setShareConsent] = useState(false);
-  const [anonymized, setAnonymized] = useState(false);
-  const [loadingProfile, setLoadingProfile] = useState(true);
+  const queryClient = useQueryClient();
+
+  // 토글 초기값을 캐시에서 읽어 첫 렌더부터 정확한 상태 표시.
+  const cachedProfile = user
+    ? readJson<CachedProfile>(PROFILE_CACHE_PREFIX + user.id)
+    : null;
+  const [shareConsent, setShareConsent] = useState(cachedProfile?.share_consent ?? false);
+  const [anonymized, setAnonymized] = useState(cachedProfile?.anonymized ?? false);
+  const [loadingProfile, setLoadingProfile] = useState(!cachedProfile);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [autostart, setAutostart] = useState<boolean>(
+    () => readJson<boolean>(AUTOSTART_CACHE_KEY) ?? false,
+  );
+  const [autostartReady, setAutostartReady] = useState(false);
+  const [dataDir, setDataDir] = useState<string | null>(
+    () => readJson<string>(DATA_DIR_CACHE_KEY),
+  );
 
-  // Supabase profiles 테이블에서 현재 토글 상태 읽기
+  useEffect(() => {
+    if (!IS_TAURI) {
+      setAutostartReady(true);
+      return;
+    }
+    isAutostartEnabled()
+      .then((on) => {
+        setAutostart(on);
+        writeJson(AUTOSTART_CACHE_KEY, on);
+      })
+      .catch(() => {})
+      .finally(() => setAutostartReady(true));
+    invoke<string>("get_data_dir")
+      .then((dir) => {
+        setDataDir(dir);
+        writeJson(DATA_DIR_CACHE_KEY, dir);
+      })
+      .catch(() => {});
+  }, []);
+
+  async function handleAutostartChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const next = e.target.checked;
+    setAutostart(next);
+    try {
+      if (next) await enableAutostart();
+      else await disableAutostart();
+      writeJson(AUTOSTART_CACHE_KEY, next);
+    } catch (err) {
+      console.warn("[autostart] toggle failed:", err);
+      setAutostart(!next);
+    }
+  }
+
+  async function handleOpenDataFolder() {
+    if (!dataDir) return;
+    try {
+      await openPath(dataDir);
+    } catch (err) {
+      console.warn("[open-data-folder] failed:", err);
+    }
+  }
+
+  // Supabase profiles 테이블에서 최신 토글 상태 fetch + 캐시 갱신.
   useEffect(() => {
     if (!user) {
       setLoadingProfile(false);
@@ -29,6 +122,10 @@ export default function Settings() {
       if (profile) {
         setShareConsent(profile.share_consent);
         setAnonymized(profile.anonymized);
+        writeJson(PROFILE_CACHE_PREFIX + user.id, {
+          share_consent: profile.share_consent,
+          anonymized: profile.anonymized,
+        } satisfies CachedProfile);
       }
       setLoadingProfile(false);
     })();
@@ -43,6 +140,21 @@ export default function Settings() {
     setError(null);
     try {
       await updateProfile(user.id, updates);
+      // 로컬 캐시 갱신 — 다음 진입 시 즉시 정확한 상태 표시.
+      const cached =
+        readJson<CachedProfile>(PROFILE_CACHE_PREFIX + user.id) ?? {
+          share_consent: shareConsent,
+          anonymized: anonymized,
+        };
+      writeJson(PROFILE_CACHE_PREFIX + user.id, {
+        ...cached,
+        ...updates,
+      });
+      // 사내 집계는 RPC가 profiles.anonymized / share_consent를 JOIN해서 읽으므로
+      // 토글 변경 직후 캐시를 무효화해 다음 진입 시 즉시 반영되도록 한다.
+      queryClient.invalidateQueries({ queryKey: ["company_leaderboard"] });
+      queryClient.invalidateQueries({ queryKey: ["company_top_mcp"] });
+      queryClient.invalidateQueries({ queryKey: ["company_top_plugins"] });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (e) {
@@ -91,14 +203,14 @@ export default function Settings() {
   }
 
   return (
-    <div className="px-10 py-10 max-w-[920px] mx-auto space-y-10">
+    <div className="px-4 py-4 max-w-full space-y-5">
       <header>
         <p className="hp-eyebrow mb-3">Account & Privacy</p>
         <h1 className="hp-display-lg text-ink">설정</h1>
       </header>
 
       {/* Account */}
-      <section className="hp-card-flat shadow-[0_2px_8px_rgba(26,26,26,0.06)] p-8">
+      <section className="hp-card-flat shadow-[0_2px_8px_rgba(26,26,26,0.06)] p-4">
         <p className="text-[11px] tracking-[0.18em] uppercase font-bold text-graphite mb-4">
           01 · 계정
         </p>
@@ -140,7 +252,7 @@ export default function Settings() {
       </section>
 
       {/* Data policy */}
-      <section className="hp-card-flat shadow-[0_2px_8px_rgba(26,26,26,0.06)] p-8">
+      <section className="hp-card-flat shadow-[0_2px_8px_rgba(26,26,26,0.06)] p-4">
         <p className="text-[11px] tracking-[0.18em] uppercase font-bold text-graphite mb-4">
           02 · 데이터 정책
         </p>
@@ -239,20 +351,65 @@ export default function Settings() {
         )}
       </section>
 
-      {/* App info */}
-      <section className="hp-card-cloud p-8">
+      {/* App behavior */}
+      <section className="hp-card-flat shadow-[0_2px_8px_rgba(26,26,26,0.06)] p-4">
         <p className="text-[11px] tracking-[0.18em] uppercase font-bold text-graphite mb-4">
-          03 · 앱 정보
+          03 · 앱 동작
+        </p>
+
+        <label
+          className={`flex items-start gap-3 p-4 border border-hairline rounded-lg transition-colors ${
+            !IS_TAURI || !autostartReady
+              ? "opacity-50 cursor-not-allowed"
+              : "cursor-pointer hover:border-ink"
+          }`}
+        >
+          <input
+            type="checkbox"
+            checked={autostart}
+            onChange={handleAutostartChange}
+            disabled={!IS_TAURI || !autostartReady}
+            className="mt-0.5 w-4 h-4 accent-[#024ad8]"
+          />
+          <div>
+            <p className="hp-body-emphasis text-ink">로그인 시 자동 시작</p>
+            <p className="hp-caption text-graphite mt-1">
+              macOS 로그인 시 백그라운드로 실행됩니다. 메뉴바 트레이 아이콘에서 창을 다시 띄울 수 있습니다.
+            </p>
+          </div>
+        </label>
+
+        <div className="flex items-center justify-between gap-4 mt-4 p-4 border border-hairline rounded-lg">
+          <div className="min-w-0">
+            <p className="hp-body-emphasis text-ink">데이터 폴더 열기</p>
+            <p className="hp-caption text-graphite mt-1 break-all font-mono">
+              {dataDir ?? "~/Library/Application Support/madup-token-monitor/"}
+            </p>
+          </div>
+          <button
+            onClick={handleOpenDataFolder}
+            disabled={!IS_TAURI || !dataDir}
+            className="shrink-0 px-3 py-1.5 text-[12px] font-semibold rounded-md border border-hairline bg-canvas text-charcoal hover:bg-cloud transition-colors disabled:opacity-60"
+          >
+            Finder에서 열기
+          </button>
+        </div>
+
+        <p className="hp-caption text-graphite mt-4">
+          ※ 메뉴바 아이콘 옆에 오늘 사용한 USD 금액이 1분마다 갱신됩니다 (macOS).
+        </p>
+      </section>
+
+      {/* App info */}
+      <section className="hp-card-cloud p-4">
+        <p className="text-[11px] tracking-[0.18em] uppercase font-bold text-graphite mb-4">
+          04 · 앱 정보
         </p>
         <dl className="grid grid-cols-[120px_1fr] gap-y-3">
           <dt className="hp-caption text-graphite">버전</dt>
           <dd className="hp-body-emphasis text-ink">0.1.0</dd>
           <dt className="hp-caption text-graphite">업데이트</dt>
-          <dd className="hp-body text-charcoal">자동 업데이트가 활성화되어 있습니다.</dd>
-          <dt className="hp-caption text-graphite">데이터 위치</dt>
-          <dd className="hp-caption text-charcoal font-mono">
-            ~/Library/Application Support/madup-token-monitor/
-          </dd>
+          <dd className="hp-body text-charcoal">자동 업데이트는 사내 배포 채널 결정 후 활성화됩니다.</dd>
         </dl>
       </section>
     </div>
