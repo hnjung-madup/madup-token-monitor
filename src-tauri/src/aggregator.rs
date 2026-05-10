@@ -159,11 +159,16 @@ fn upsert<T: Serialize>(
         supabase_url, table, on_conflict
     );
     let body = serde_json::to_value(rows).map_err(|e| format!("serialize: {e}"))?;
+    // PostgREST upsert: resolution=merge-duplicates → INSERT on conflict UPDATE.
+    // return=minimal로 본문 응답 생략(트래픽↓), missing=default로 누락 컬럼은 기본값 사용.
     let resp = ureq::post(&url)
         .set("apikey", publishable_key)
         .set("Authorization", &format!("Bearer {}", access_token))
         .set("Content-Type", "application/json")
-        .set("Prefer", "resolution=merge-duplicates")
+        .set(
+            "Prefer",
+            "resolution=merge-duplicates,return=minimal,missing=default",
+        )
         .send_json(body);
     match resp {
         Ok(_) => Ok(rows.len()),
