@@ -44,7 +44,7 @@ jobs:
           workspaces: src-tauri
 
       - name: Install frontend dependencies
-        run: pnpm install --config.strict-build-on-ignored-scripts=false
+        run: pnpm install --frozen-lockfile --dangerously-allow-all-builds
 
       - name: Build (macOS)
         env:
