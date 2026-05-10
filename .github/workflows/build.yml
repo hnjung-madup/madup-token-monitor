@@ -8,6 +8,7 @@ on:
 
 jobs:
   build:
+    # macOS 전용 빌드. Windows 지원은 v0.2 이후 검토.
     strategy:
       fail-fast: false
       matrix:
@@ -16,8 +17,6 @@ jobs:
             target: aarch64-apple-darwin
           - os: macos-latest
             target: x86_64-apple-darwin
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
 
     runs-on: ${{ matrix.os }}
 
@@ -60,17 +59,9 @@ jobs:
         run: pnpm install
 
       - name: Build (macOS)
-        if: runner.os == 'macOS'
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-        run: pnpm tauri build --target ${{ matrix.target }}
-
-      - name: Build (Windows)
-        if: runner.os == 'Windows'
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
         run: pnpm tauri build --target ${{ matrix.target }}
 
       - name: Upload artifacts

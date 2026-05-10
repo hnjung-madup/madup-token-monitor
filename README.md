@@ -2,6 +2,8 @@
 
 매드업 구성원의 Claude / MCP 토큰 사용량을 로컬에서 추적하고, 선택적으로 팀과 집계하는 데스크톱 앱입니다.
 
+> **현재 macOS 전용입니다.** (Apple Silicon · Intel) Windows 지원은 v0.2 이후 검토합니다.
+
 ## 소개
 
 - Claude Code / MCP JSONL 로그를 자동으로 파싱해 로컬 SQLite에 저장합니다.
@@ -17,7 +19,6 @@
 |--------|------|
 | macOS Apple Silicon | `*_aarch64.dmg` |
 | macOS Intel | `*_x64.dmg` |
-| Windows | `*_x64-setup.exe` |
 
 > 자동 업데이트가 내장되어 있어 새 버전 출시 시 앱 내에서 알림을 받을 수 있습니다.
 > 업데이트 서버 엔드포인트는 사내 배포 시 결정이 필요합니다 — `tauri.conf.json`의 `plugins.updater.endpoints` 참고.
@@ -45,7 +46,7 @@
 - Node.js 20+
 - pnpm 9+
 - Rust (stable)
-- macOS 또는 Windows
+- macOS (Xcode Command Line Tools 필요)
 
 ### 로컬 실행
 
