@@ -219,37 +219,21 @@ function DeepLinkBridge() {
   useEffect(() => {
     let unlisten: (() => void) | undefined;
 
-    function debugLog(key: string, value: string) {
-      try {
-        localStorage.setItem(
-          `madup_debug_${key}`,
-          `${new Date().toISOString().slice(11, 19)} ${value}`,
-        );
-      } catch {
-        /* ignore */
-      }
-    }
-
-    async function processUrl(source: string, url: string | null | undefined) {
-      debugLog(`bridge_${source}`, url ? url.slice(0, 60) : "empty");
+    async function processUrl(url: string | null | undefined) {
       if (!url || !url.startsWith("madup-token-monitor://auth/callback")) return;
       const ok = await handleAuthCallback(url);
-      debugLog("bridge_result", `ok=${ok}`);
       if (ok) navigate("/", { replace: true });
     }
 
-    debugLog("bridge_mounted", "true");
-
     getCurrent()
-      .then((urls) => processUrl("getCurrent", urls?.[0]))
-      .catch((e) => debugLog("bridge_getCurrent_err", String(e).slice(0, 60)));
+      .then((urls) => processUrl(urls?.[0]))
+      .catch(() => {});
 
-    onOpenUrl((urls) => processUrl("onOpenUrl", urls?.[0]))
+    onOpenUrl((urls) => processUrl(urls?.[0]))
       .then((u) => {
         unlisten = u;
-        debugLog("bridge_listener_ready", "true");
       })
-      .catch((e) => debugLog("bridge_listener_err", String(e).slice(0, 60)));
+      .catch(() => {});
 
     return () => unlisten?.();
   }, [navigate]);
