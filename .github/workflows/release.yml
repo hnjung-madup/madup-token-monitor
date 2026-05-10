@@ -52,6 +52,25 @@ jobs:
         # 치명적 에러로 처리 — 명시적으로 모든 빌드 허용.
         run: pnpm install --frozen-lockfile --dangerously-allow-all-builds
 
+      - name: Write .env (vite inline)
+        # tauri-action 이 sub-process 에 env forwarding 을 일부 누락하는 케이스 우회.
+        # vite 가 .env 파일을 직접 읽어 import.meta.env 로 inline 하도록 명시 작성.
+        env:
+          URL: ${{ secrets.VITE_SUPABASE_URL }}
+          KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          echo "URL length: ${#URL}"
+          echo "KEY length: ${#KEY}"
+          if [ -z "$URL" ] || [ -z "$KEY" ]; then
+            echo "::error::Supabase secrets are missing or empty"
+            exit 1
+          fi
+          {
+            echo "VITE_SUPABASE_URL=$URL"
+            echo "VITE_SUPABASE_PUBLISHABLE_KEY=$KEY"
+          } > .env
+          echo "✓ .env written ($(wc -l < .env) lines)"
+
       - name: Build and release
         uses: tauri-apps/tauri-action@v0
         env:

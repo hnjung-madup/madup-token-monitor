@@ -46,6 +46,22 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile --dangerously-allow-all-builds
 
+      - name: Write .env (vite inline)
+        env:
+          URL: ${{ secrets.VITE_SUPABASE_URL }}
+          KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          echo "URL length: ${#URL}"
+          echo "KEY length: ${#KEY}"
+          if [ -z "$URL" ] || [ -z "$KEY" ]; then
+            echo "::error::Supabase secrets are missing or empty"
+            exit 1
+          fi
+          {
+            echo "VITE_SUPABASE_URL=$URL"
+            echo "VITE_SUPABASE_PUBLISHABLE_KEY=$KEY"
+          } > .env
+
       - name: Build (macOS)
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
