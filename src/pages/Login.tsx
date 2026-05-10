@@ -1,9 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { startSlackLogin } from "@/lib/auth";
+import { useAuthUser } from "@/hooks/useAuthUser";
 
 export default function Login() {
+  const navigate = useNavigate();
+  const { user } = useAuthUser();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 세션이 생기면 (deep link callback → setSession 성공) 자동으로 홈으로.
+  useEffect(() => {
+    if (user) navigate("/", { replace: true });
+  }, [user, navigate]);
 
   async function handleLogin() {
     setLoading(true);
@@ -12,6 +21,9 @@ export default function Login() {
       await startSlackLogin();
     } catch {
       setError("로그인 중 오류가 발생했습니다. 다시 시도해주세요.");
+    } finally {
+      // openUrl 은 외부 브라우저로 fire-and-forget. 응답은 deep link 로 옴.
+      // 로딩 상태는 풀어 사용자가 다시 시도할 수 있게.
       setLoading(false);
     }
   }
