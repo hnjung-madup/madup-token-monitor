@@ -35,12 +35,21 @@ fn greet(name: &str) -> String {
 use aggregator::sync_aggregates_now;
 use commands::{get_heatmap, get_summary, get_timeseries, get_top_mcp, get_top_plugins};
 use oauth_usage::{get_oauth_usage, refresh_oauth_usage};
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let _watcher = watcher::FileWatcher::start().ok();
 
     tauri::Builder::default()
+        // 두 번째 instance가 실행되려 하면 기존 윈도우를 활성화하고 종료한다.
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            if let Some(w) = app.get_webview_window("main") {
+                let _ = w.unminimize();
+                let _ = w.show();
+                let _ = w.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec![]),
