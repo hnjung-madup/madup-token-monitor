@@ -180,6 +180,10 @@ pub struct SyncResult {
     pub usage_rows: usize,
     pub mcp_rows: usize,
     pub plugin_rows: usize,
+    /// 디버그: Rust가 받은 user_id (RLS 에러 진단용)
+    pub user_id: String,
+    /// 디버그: 첫 row의 sample (없으면 None)
+    pub sample_first_row: Option<String>,
 }
 
 /// Tauri command: 즉시 집계 동기화.
@@ -221,9 +225,12 @@ pub async fn sync_aggregates_now(
         "user_id,date,plugin_id",
     )?;
 
+    let sample = usage.first().and_then(|u| serde_json::to_string(u).ok());
     Ok(SyncResult {
         usage_rows: usage_n,
         mcp_rows: mcp_n,
         plugin_rows: plugin_n,
+        user_id: user_id.clone(),
+        sample_first_row: sample,
     })
 }

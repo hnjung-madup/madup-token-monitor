@@ -52,6 +52,8 @@ export interface SyncResult {
   usage_rows: number;
   mcp_rows: number;
   plugin_rows: number;
+  user_id: string;
+  sample_first_row: string | null;
 }
 
 /// 즉시 집계 동기화 (share_consent=true 유저만 호출). access_token + user_id를 명시적으로 넘긴다.
