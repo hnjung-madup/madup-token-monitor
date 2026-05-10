@@ -44,7 +44,7 @@ jobs:
           workspaces: src-tauri
 
       - name: Install frontend dependencies
-        run: pnpm install
+        run: pnpm install --config.strict-build-on-ignored-scripts=false
 
       - name: Build (macOS)
         env:

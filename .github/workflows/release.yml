@@ -48,7 +48,9 @@ jobs:
           workspaces: src-tauri
 
       - name: Install frontend dependencies
-        run: pnpm install
+        # pnpm 11+ 가 CI 모드에서 ignored build scripts(esbuild의 native 다운로드 등)를
+        # 치명적 에러로 처리. .npmrc 설정 + 명시 플래그로 둘 다 허용.
+        run: pnpm install --config.strict-build-on-ignored-scripts=false
 
       - name: Build and release
         uses: tauri-apps/tauri-action@v0

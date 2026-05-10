@@ -1,10 +1,13 @@
 {
   "name": "madup-token-monitor",
   "private": true,
-  "version": "0.1.5",
+  "version": "0.1.6",
   "type": "module",
   "engines": {
     "node": ">=24"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
   },
   "scripts": {
     "dev": "vite",
