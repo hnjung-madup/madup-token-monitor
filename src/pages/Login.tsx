@@ -112,7 +112,7 @@ export default function Login() {
       <footer className="bg-ink text-on-ink px-10 py-6">
         <div className="max-w-[1366px] mx-auto flex items-center justify-between">
           <p className="text-[11px] tracking-[0.18em] uppercase font-bold text-on-ink/70">
-            © Madup · Token Monitor v0.1.0
+            © Madup · Token Monitor
           </p>
           <p className="hp-caption-sm text-on-ink/60">
             Local-first · Aggregation is opt-in
