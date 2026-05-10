@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase, getProfile, updateProfile } from "../lib/supabase";
+import { syncAggregatesNow, type SyncResult } from "../lib/auth";
 import { useAuthUser } from "../hooks/useAuthUser";
 import { Avatar } from "../components/Avatar";
 
@@ -11,6 +12,9 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   // Supabase profiles 테이블에서 현재 토글 상태 읽기
   useEffect(() => {
@@ -58,6 +62,21 @@ export default function Settings() {
     const val = e.target.checked;
     setAnonymized(val);
     persistToggle({ anonymized: val });
+  }
+
+  async function handleSyncNow() {
+    setSyncing(true);
+    setSyncError(null);
+    setSyncResult(null);
+    try {
+      const result = await syncAggregatesNow();
+      if (result) setSyncResult(result);
+      else setSyncError("로그인되어 있지 않거나 환경설정 누락");
+    } catch (e) {
+      setSyncError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSyncing(false);
+    }
   }
 
   async function handleSignOut() {
@@ -189,6 +208,34 @@ export default function Settings() {
         )}
         {error && (
           <p className="hp-caption text-[#dc2626] mt-3">저장 실패: {error}</p>
+        )}
+
+        {user && shareConsent && (
+          <div className="mt-6 pt-6 border-t border-hairline">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <p className="hp-body-emphasis text-ink">사내 집계 즉시 동기화</p>
+                <p className="hp-caption text-graphite mt-1">
+                  앱 시작 후 5초, 그 다음 1시간마다 자동 동기화됩니다. 즉시 반영하려면 버튼을 누르세요.
+                </p>
+              </div>
+              <button
+                onClick={handleSyncNow}
+                disabled={syncing}
+                className="px-3 py-1.5 text-[12px] font-semibold rounded-md border border-hairline bg-canvas text-charcoal hover:bg-cloud transition-colors disabled:opacity-60"
+              >
+                {syncing ? "동기화 중…" : "지금 동기화"}
+              </button>
+            </div>
+            {syncResult && (
+              <p className="hp-caption text-primary mt-3 font-semibold">
+                ✓ 동기화 완료 — 사용량 {syncResult.usage_rows}건 / MCP {syncResult.mcp_rows}건 / 플러그인 {syncResult.plugin_rows}건
+              </p>
+            )}
+            {syncError && (
+              <p className="hp-caption text-[#dc2626] mt-3">동기화 실패: {syncError}</p>
+            )}
+          </div>
         )}
       </section>
 
