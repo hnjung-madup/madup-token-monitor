@@ -1,8 +1,22 @@
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Manager, Runtime,
+    AppHandle, Manager, Runtime,
 };
+
+/// macOS는 hide된 window를 다시 띄울 때 단순 `show()`만으로는 dock/foreground 활성화가 안 됨.
+/// unminimize → show → set_focus 순서로 호출하고, macOS에서는 dock의 앱 자체도 visible로.
+fn show_and_focus<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.unminimize();
+        let _ = w.show();
+        let _ = w.set_focus();
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let _ = app.show(); // NSApp setActivationPolicy(.regular) 동등
+    }
+}
 
 pub fn setup_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
     let show_item = MenuItem::with_id(app, "show", "열기", true, None::<&str>)?;
@@ -13,14 +27,8 @@ pub fn setup_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
     TrayIconBuilder::new()
         .menu(&menu)
         .tooltip("매드업 토큰 모니터")
-        // macOS: icon-text badge support; Windows: tooltip fallback (set above)
         .on_menu_event(|app, event| match event.id.as_ref() {
-            "show" => {
-                if let Some(w) = app.get_webview_window("main") {
-                    let _ = w.show();
-                    let _ = w.set_focus();
-                }
-            }
+            "show" => show_and_focus(app),
             "hide" => {
                 if let Some(w) = app.get_webview_window("main") {
                     let _ = w.hide();
@@ -39,11 +47,11 @@ pub fn setup_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
                 let app = tray.app_handle();
                 if let Some(w) = app.get_webview_window("main") {
                     let visible = w.is_visible().unwrap_or(false);
-                    if visible {
+                    let focused = w.is_focused().unwrap_or(false);
+                    if visible && focused {
                         let _ = w.hide();
                     } else {
-                        let _ = w.show();
-                        let _ = w.set_focus();
+                        show_and_focus(app);
                     }
                 }
             }
