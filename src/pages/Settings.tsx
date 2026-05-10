@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { getVersion } from "@tauri-apps/api/app";
 import { openPath } from "@tauri-apps/plugin-opener";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -66,6 +67,7 @@ export default function Settings() {
   const [dataDir, setDataDir] = useState<string | null>(
     () => readJson<string>(DATA_DIR_CACHE_KEY),
   );
+  const [appVersion, setAppVersion] = useState<string | null>(null);
 
   useEffect(() => {
     if (!IS_TAURI) {
@@ -84,6 +86,9 @@ export default function Settings() {
         setDataDir(dir);
         writeJson(DATA_DIR_CACHE_KEY, dir);
       })
+      .catch(() => {});
+    getVersion()
+      .then(setAppVersion)
       .catch(() => {});
   }, []);
 
@@ -407,9 +412,11 @@ export default function Settings() {
         </p>
         <dl className="grid grid-cols-[120px_1fr] gap-y-3">
           <dt className="hp-caption text-graphite">버전</dt>
-          <dd className="hp-body-emphasis text-ink">0.1.0</dd>
+          <dd className="hp-body-emphasis text-ink">{appVersion ?? "—"}</dd>
           <dt className="hp-caption text-graphite">업데이트</dt>
-          <dd className="hp-body text-charcoal">자동 업데이트는 사내 배포 채널 결정 후 활성화됩니다.</dd>
+          <dd className="hp-body text-charcoal">
+            GitHub Releases 자동 업데이트가 활성화되어 있습니다. 새 버전이 배포되면 시작 시 알림이 표시됩니다.
+          </dd>
         </dl>
       </section>
     </div>
