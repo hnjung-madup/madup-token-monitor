@@ -1,24 +1,63 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabase";
+import { supabase, getProfile, updateProfile } from "../lib/supabase";
 import { useAuthUser } from "../hooks/useAuthUser";
 import { Avatar } from "../components/Avatar";
 
 export default function Settings() {
   const { user } = useAuthUser();
-  const [optIn, setOptIn] = useState(false);
+  const [shareConsent, setShareConsent] = useState(false);
+  const [anonymized, setAnonymized] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  // Supabase profiles 테이블에서 현재 토글 상태 읽기
   useEffect(() => {
-    const stored = localStorage.getItem("opt_in_aggregate");
-    setOptIn(stored === "true");
-  }, []);
+    if (!user) {
+      setLoadingProfile(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const profile = await getProfile(user.id);
+      if (cancelled) return;
+      if (profile) {
+        setShareConsent(profile.share_consent);
+        setAnonymized(profile.anonymized);
+      }
+      setLoadingProfile(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
-  function handleOptInChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function persistToggle(updates: { share_consent?: boolean; anonymized?: boolean }) {
+    if (!user) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await updateProfile(user.id, updates);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleShareConsentChange(e: React.ChangeEvent<HTMLInputElement>) {
     const val = e.target.checked;
-    setOptIn(val);
-    localStorage.setItem("opt_in_aggregate", String(val));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setShareConsent(val);
+    persistToggle({ share_consent: val });
+  }
+
+  function handleAnonymizedChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const val = e.target.checked;
+    setAnonymized(val);
+    persistToggle({ anonymized: val });
   }
 
   async function handleSignOut() {
@@ -93,26 +132,63 @@ export default function Settings() {
           집계됩니다. 원시 로그나 대화 내용은 전송되지 않습니다.
         </p>
 
-        <label className="flex items-start gap-3 cursor-pointer p-4 border border-hairline rounded-lg hover:border-ink transition-colors">
-          <input
-            type="checkbox"
-            checked={optIn}
-            onChange={handleOptInChange}
-            className="mt-0.5 w-4 h-4 accent-[#024ad8]"
-          />
-          <div>
-            <p className="hp-body-emphasis text-ink">
-              익명화된 토큰 사용량을 팀 집계에 포함하는 것에 동의합니다
-            </p>
-            <p className="hp-caption text-graphite mt-1">
-              언제든 이 토글을 해제해 즉시 철회할 수 있습니다.
-            </p>
-          </div>
-        </label>
-        {saved && (
-          <p className="hp-caption text-primary mt-3 font-semibold">
-            ✓ 저장되었습니다.
+        {!user ? (
+          <p className="hp-caption text-graphite italic">
+            로그인 후 옵트인 설정이 가능합니다.
           </p>
+        ) : (
+          <div className="space-y-3">
+            <label
+              className={`flex items-start gap-3 p-4 border border-hairline rounded-lg transition-colors ${
+                loadingProfile ? "opacity-50 cursor-wait" : "cursor-pointer hover:border-ink"
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={shareConsent}
+                onChange={handleShareConsentChange}
+                disabled={loadingProfile || saving}
+                className="mt-0.5 w-4 h-4 accent-[#024ad8]"
+              />
+              <div>
+                <p className="hp-body-emphasis text-ink">
+                  익명화된 토큰 사용량을 팀 집계에 포함하는 것에 동의합니다
+                </p>
+                <p className="hp-caption text-graphite mt-1">
+                  토큰 카운트와 비용 합계만 업로드됩니다. 원본 메시지/프롬프트는 전송 X.
+                </p>
+              </div>
+            </label>
+
+            <label
+              className={`flex items-start gap-3 p-4 border border-hairline rounded-lg transition-colors ${
+                !shareConsent || loadingProfile
+                  ? "opacity-50 cursor-not-allowed"
+                  : "cursor-pointer hover:border-ink"
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={anonymized}
+                onChange={handleAnonymizedChange}
+                disabled={!shareConsent || loadingProfile || saving}
+                className="mt-0.5 w-4 h-4 accent-[#024ad8]"
+              />
+              <div>
+                <p className="hp-body-emphasis text-ink">사내 리더보드에서 익명으로 표시</p>
+                <p className="hp-caption text-graphite mt-1">
+                  Slack 핸들/아바타 대신 "익명"으로 표시됩니다. 본인 데이터는 본인만 볼 수 있습니다.
+                </p>
+              </div>
+            </label>
+          </div>
+        )}
+
+        {saved && (
+          <p className="hp-caption text-primary mt-3 font-semibold">✓ 저장되었습니다.</p>
+        )}
+        {error && (
+          <p className="hp-caption text-[#dc2626] mt-3">저장 실패: {error}</p>
         )}
       </section>
 
