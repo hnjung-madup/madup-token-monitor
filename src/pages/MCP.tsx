@@ -70,7 +70,7 @@ export function MCP() {
               <McpBarChart data={companyMcp} color="#1a1a1a" />
             ) : (
               <p className="hp-caption text-graphite py-8 text-center">
-                팀 데이터 집계 중 (W4 Supabase 연동 후 표시)
+                팀 데이터 집계 중입니다.
               </p>
             )}
           </CardContent>

@@ -8,6 +8,7 @@ import {
   buildMockHeatmap,
   buildMockCompanyTopMcp,
 } from "@/mocks/usageMock";
+import { supabase } from "@/lib/supabase";
 
 const IS_MOCK = !("__TAURI_INTERNALS__" in window);
 
@@ -126,13 +127,33 @@ export async function refreshOAuthUsage(): Promise<OAuthUsageWithError> {
   }
 }
 
-export function useCompanyTopMcp() {
+// Supabase RPC `get_top_mcp_servers` 결과 row 형태
+interface CompanyMcpRow {
+  mcp_server: string;
+  total_count: number;
+}
+
+// 사내 MCP TOP 10 — Supabase RPC 사용. 비로그인/오류/빈 결과는 mock으로 대체해
+// MVP 시연 단계의 빈 화면을 방지한다. share_consent=true 유저가 1명이라도 있고
+// aggregator가 한 번 돌면 실제 데이터로 자동 swap.
+export function useCompanyTopMcp(rangeDays = 30) {
   return useQuery({
-    queryKey: ["company_top_mcp"],
-    queryFn: () =>
-      IS_MOCK
-        ? delay(buildMockCompanyTopMcp())
-        : tauriInvoke<McpUsage[]>("get_company_top_mcp"),
-    staleTime: 300_000,
+    queryKey: ["company_top_mcp", rangeDays],
+    queryFn: async (): Promise<McpUsage[]> => {
+      const { data, error } = await supabase.rpc("get_top_mcp_servers", {
+        range_days: rangeDays,
+      });
+      if (error) {
+        console.warn("[company_top_mcp] RPC error, falling back to mock:", error.message);
+        return buildMockCompanyTopMcp();
+      }
+      const rows = (data ?? []) as CompanyMcpRow[];
+      if (rows.length === 0) {
+        return buildMockCompanyTopMcp();
+      }
+      return rows.map((r) => ({ mcp_server: r.mcp_server, count: Number(r.total_count) }));
+    },
+    staleTime: 5 * 60_000,
+    refetchInterval: 5 * 60_000,
   });
 }
