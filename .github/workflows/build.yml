@@ -50,16 +50,19 @@ jobs:
         env:
           URL: ${{ secrets.VITE_SUPABASE_URL }}
           KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          SUCCESS_URL: ${{ secrets.VITE_AUTH_SUCCESS_URL }}
         run: |
           echo "URL length: ${#URL}"
           echo "KEY length: ${#KEY}"
-          if [ -z "$URL" ] || [ -z "$KEY" ]; then
-            echo "::error::Supabase secrets are missing or empty"
+          echo "SUCCESS_URL length: ${#SUCCESS_URL}"
+          if [ -z "$URL" ] || [ -z "$KEY" ] || [ -z "$SUCCESS_URL" ]; then
+            echo "::error::Required secrets are missing or empty"
             exit 1
           fi
           {
             echo "VITE_SUPABASE_URL=$URL"
             echo "VITE_SUPABASE_PUBLISHABLE_KEY=$KEY"
+            echo "VITE_AUTH_SUCCESS_URL=$SUCCESS_URL"
           } > .env
 
       - name: Build (macOS)
