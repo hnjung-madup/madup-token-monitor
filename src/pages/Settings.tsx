@@ -228,19 +228,9 @@ export default function Settings() {
               </button>
             </div>
             {syncResult && (
-              <div className="hp-caption mt-3">
-                <p className="text-primary font-semibold">
-                  ✓ 동기화 완료 — 사용량 {syncResult.usage_rows}건 / MCP {syncResult.mcp_rows}건 / 플러그인 {syncResult.plugin_rows}건
-                </p>
-                <p className="text-graphite font-mono mt-1 text-[10px] break-all">
-                  user_id={syncResult.user_id}
-                </p>
-                {syncResult.sample_first_row && (
-                  <p className="text-graphite font-mono mt-1 text-[10px] break-all">
-                    sample={syncResult.sample_first_row}
-                  </p>
-                )}
-              </div>
+              <p className="hp-caption text-primary mt-3 font-semibold">
+                ✓ 동기화 완료 — 사용량 {syncResult.usage_rows}건 / MCP {syncResult.mcp_rows}건 / 플러그인 {syncResult.plugin_rows}건
+              </p>
             )}
             {syncError && (
               <p className="hp-caption text-[#dc2626] mt-3 break-all">동기화 실패: {syncError}</p>
