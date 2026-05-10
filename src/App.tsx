@@ -46,8 +46,6 @@ const NAV_ITEMS = [
 ] as const;
 
 function MadupMark({ size = 28 }: { size?: number }) {
-  // draggable=false: img 의 native HTML5 drag 이 tauri drag region 을 가로채는 것 방지.
-  // data-tauri-drag-region: img 위에서 mousedown 시작해도 윈도우 드래그가 작동.
   return (
     <img
       src="/madup-favicon.png"
@@ -55,14 +53,14 @@ function MadupMark({ size = 28 }: { size?: number }) {
       width={size}
       height={size}
       draggable={false}
-      data-tauri-drag-region
       className="shrink-0"
     />
   );
 }
 
-// 메뉴바 popover — 상단의 좁은 헤더가 드래그 영역 + 로고 + 액션 아이콘.
-// 클릭 가능 자식에는 data-tauri-drag-region을 두지 않아 드래그가 발동하지 않음.
+// 메뉴바 popover — 상단 헤더는 로고 + 액션 아이콘.
+// macOS popover 윈도우는 트레이 위치에 고정되어 보여주는 것이 자연스러워
+// 윈도우 드래그 이동은 의도적으로 비활성화 (data-tauri-drag-region 없음).
 function PopoverHeader() {
   const { user } = useAuthUser();
   const navigate = useNavigate();
@@ -73,18 +71,14 @@ function PopoverHeader() {
   }
 
   return (
-    <header
-      data-tauri-drag-region
-      style={{ cursor: "grab" }}
-      className="flex items-center justify-between px-3 py-2 border-b border-hairline bg-canvas select-none"
-    >
-      <div data-tauri-drag-region className="flex items-center gap-2 min-w-0">
+    <header className="flex items-center justify-between px-3 py-2 border-b border-hairline bg-canvas select-none">
+      <div className="flex items-center gap-2 min-w-0">
         <MadupMark size={22} />
-        <div data-tauri-drag-region className="leading-tight min-w-0">
-          <p data-tauri-drag-region className="text-[12px] font-semibold text-ink truncate">
+        <div className="leading-tight min-w-0">
+          <p className="text-[12px] font-semibold text-ink truncate">
             매드업 토큰 모니터
           </p>
-          <p data-tauri-drag-region className="text-[10px] text-graphite truncate">
+          <p className="text-[10px] text-graphite truncate">
             {user?.email ?? "로그인 필요"}
           </p>
         </div>

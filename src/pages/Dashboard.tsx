@@ -22,6 +22,28 @@ const RANGES: { value: Range; label: string }[] = [
   { value: "30d", label: "dashboard.period.month" },
 ];
 
+type Granularity = "daily" | "weekly" | "monthly";
+
+const GRANULARITIES: { value: Granularity; label: string }[] = [
+  { value: "daily", label: "일자별" },
+  { value: "weekly", label: "주별" },
+  { value: "monthly", label: "월별" },
+];
+
+// "주별" 키: ISO week 기준이 아니라 KST 기준 월요일 시작 주의 시작 일자.
+function weekStartKey(ts: number): string {
+  const d = new Date(ts);
+  const dow = (d.getDay() + 6) % 7; // Mon=0
+  d.setDate(d.getDate() - dow);
+  return localDateKey(d.getTime());
+}
+
+// "월별" 키: YYYY-MM (local).
+function monthKey(ts: number): string {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
 // 일자 키는 local timezone 기준 — UTC로 묶으면 한국 사용자의 KST 9시 이전 작업이
 // 전날 UTC로 빠져나가서 "오늘"이 비어 보인다.
 function localDateKey(ts: number): string {
@@ -35,10 +57,15 @@ function localDateKey(ts: number): string {
 // AI Token Monitor와 동일한 합산: input + output + cache_read + cache_write.
 // cache까지 포함해야 Claude API가 청구하는 진짜 사용량 = "토큰 사용량" 의미와 맞다.
 // (cache는 cards에 별도 라벨로도 표시되어 비교 가능)
-function aggregateByDay(points: Point[]): { date: string; tokens: number; cost: number }[] {
+function aggregateByPeriod(
+  points: Point[],
+  granularity: Granularity,
+): { date: string; tokens: number; cost: number }[] {
+  const keyFn =
+    granularity === "weekly" ? weekStartKey : granularity === "monthly" ? monthKey : localDateKey;
   const map = new Map<string, { tokens: number; cost: number }>();
   for (const p of points) {
-    const key = localDateKey(p.ts);
+    const key = keyFn(p.ts);
     const cur = map.get(key) ?? { tokens: 0, cost: 0 };
     cur.tokens += p.input_tokens + p.output_tokens + (p.cache_read ?? 0) + (p.cache_write ?? 0);
     cur.cost += p.cost_usd;
@@ -59,6 +86,7 @@ const DAILY_CARD_LIMIT: Record<Range, number> = { "1d": 1, "7d": 7, "30d": 30 };
 export function Dashboard() {
   const { t } = useTranslation();
   const [dailyRange, setDailyRange] = useState<Range>("7d");
+  const [dailyGranularity, setDailyGranularity] = useState<Granularity>("daily");
   const [dailyMetric, setDailyMetric] = useState<"tokens" | "cost">("tokens");
   const [dailyView, setDailyView] = useState<"chart" | "list">("list");
 
@@ -83,7 +111,10 @@ export function Dashboard() {
     }
   }
 
-  const dailyAggregated = useMemo(() => aggregateByDay(tsDaily ?? []), [tsDaily]);
+  const dailyAggregated = useMemo(
+    () => aggregateByPeriod(tsDaily ?? [], dailyGranularity),
+    [tsDaily, dailyGranularity],
+  );
 
   // 캘린더 월(이번 달 1일~오늘) 합산 — 30d rolling이 아닌 정확한 "5월" 같은 의미.
   const monthToDate = useMemo(() => {
@@ -296,7 +327,13 @@ export function Dashboard() {
       {/* DAILY CARD ============================================ */}
       <section className="hp-card-flat shadow-[0_2px_8px_rgba(26,26,26,0.06)] p-3">
         <div className="flex items-center justify-between gap-2 mb-2">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <Select
+              value={dailyGranularity}
+              onChange={(v) => setDailyGranularity(v as Granularity)}
+              options={GRANULARITIES}
+              ariaLabel="단위 선택"
+            />
             <Select
               value={dailyRange}
               onChange={(v) => setDailyRange(v as Range)}
