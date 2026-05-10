@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { startSlackLogin } from "@/lib/auth";
 
 export default function Login() {
@@ -105,6 +105,8 @@ export default function Login() {
               돌아옵니다. 원시 토큰 데이터는 이 디바이스를 떠나지 않습니다.
             </p>
           </div>
+
+          <DebugPanel />
         </section>
       </main>
 
@@ -120,6 +122,38 @@ export default function Login() {
         </div>
       </footer>
     </div>
+  );
+}
+
+function DebugPanel() {
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setTick((x) => x + 1), 500);
+    return () => clearInterval(t);
+  }, []);
+  const entries = Object.entries(localStorage)
+    .filter(([k]) => k.startsWith("madup_debug_"))
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([k, v]) => `${k.replace("madup_debug_", "")}: ${v}`);
+  if (entries.length === 0) return null;
+  return (
+    <pre
+      data-tick={tick}
+      style={{
+        marginTop: 16,
+        padding: 8,
+        background: "#fafafa",
+        border: "1px solid #e5e5e5",
+        borderRadius: 4,
+        fontSize: 9,
+        lineHeight: 1.4,
+        whiteSpace: "pre-wrap",
+        wordBreak: "break-all",
+        opacity: 0.7,
+      }}
+    >
+      {entries.join("\n")}
+    </pre>
   );
 }
 

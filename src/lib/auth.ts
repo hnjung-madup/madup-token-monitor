@@ -10,22 +10,35 @@ export async function startSlackLogin(): Promise<void> {
   await openUrl(url);
 }
 
+// 진단용 로그를 localStorage 에 기록 — Login 화면 하단에 표시.
+function debugLog(key: string, value: string) {
+  try {
+    localStorage.setItem(`madup_debug_${key}`, `${new Date().toISOString().slice(11, 19)} ${value}`);
+  } catch {
+    /* ignore */
+  }
+}
+
 // Tauri deep-link callback 처리
 // Supabase는 흐름에 따라 두 가지 형태로 토큰을 보냄:
 //   ① PKCE code flow: ?code=...           → exchangeCodeForSession
 //   ② OIDC implicit flow: #access_token=...&refresh_token=... → setSession
 export async function handleAuthCallback(url: string): Promise<boolean> {
+  debugLog("01_received", url.slice(0, 60));
   try {
     const urlObj = new URL(url);
 
     // ② Hash fragment 방식 우선 (Slack OIDC가 이쪽으로 옴)
     const fragment = urlObj.hash.startsWith("#") ? urlObj.hash.slice(1) : "";
+    debugLog("02_fragment_len", String(fragment.length));
     if (fragment) {
       const params = new URLSearchParams(fragment);
       const access_token = params.get("access_token");
       const refresh_token = params.get("refresh_token");
+      debugLog("03_tokens", `at=${!!access_token} rt=${!!refresh_token}`);
       if (access_token && refresh_token) {
-        const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+        const { error, data } = await supabase.auth.setSession({ access_token, refresh_token });
+        debugLog("04_setSession", `err=${error?.message ?? "none"} user=${!!data?.user}`);
         return !error;
       }
     }
@@ -33,12 +46,16 @@ export async function handleAuthCallback(url: string): Promise<boolean> {
     // ① Query code 방식 (PKCE)
     const code = urlObj.searchParams.get("code");
     if (code) {
+      debugLog("02b_code", code.slice(0, 12));
       const { error } = await supabase.auth.exchangeCodeForSession(code);
+      debugLog("04b_exchange", `err=${error?.message ?? "none"}`);
       return !error;
     }
 
+    debugLog("99_no_match", "no fragment, no code");
     return false;
-  } catch {
+  } catch (e) {
+    debugLog("99_caught", String(e).slice(0, 80));
     return false;
   }
 }
