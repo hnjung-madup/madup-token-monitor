@@ -95,7 +95,9 @@ export function Dashboard() {
   const { data: tsDaily } = useTimeseries(dailyRange);
   const { data: tsMonth } = useTimeseries("30d");
   const { data: heatmap } = useHeatmap(56);
-  const { data: oauthUsage } = useOAuthUsage();
+  const { data: oauthResp } = useOAuthUsage();
+  const oauthUsage = oauthResp?.data ?? null;
+  const oauthError = oauthResp?.error ?? null;
 
   const dailyAggregated = useMemo(() => aggregateByDay(tsDaily ?? []), [tsDaily]);
 
@@ -258,10 +260,12 @@ export function Dashboard() {
           <p className="text-[11px] tracking-[0.18em] uppercase font-bold text-graphite">
             사용량 한도
           </p>
-          <span className="text-[11px] text-graphite">
+          <span className="text-[11px] text-graphite" title={oauthError ?? undefined}>
             {hasRealQuota
               ? `Claude OAuth API 실시간${oauthUsage?.is_stale ? " (캐시)" : ""}`
-              : "Claude 구독 기준 — 추정값 (OAuth 미연결)"}
+              : oauthError
+                ? `OAuth 오류: ${oauthError.length > 60 ? oauthError.slice(0, 60) + "…" : oauthError}`
+                : "Claude 구독 기준 — 추정값 (OAuth 미연결)"}
           </span>
         </div>
 

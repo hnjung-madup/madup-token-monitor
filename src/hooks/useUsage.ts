@@ -89,15 +89,24 @@ export interface OAuthUsage {
   is_stale: boolean;
 }
 
+export interface OAuthUsageWithError {
+  data: OAuthUsage | null;
+  error: string | null;
+}
+
 export function useOAuthUsage() {
-  return useQuery({
+  return useQuery<OAuthUsageWithError>({
     queryKey: ["oauthUsage"],
     queryFn: async () => {
-      if (IS_MOCK) return null as OAuthUsage | null;
+      if (IS_MOCK) return { data: null, error: null };
       try {
-        return await tauriInvoke<OAuthUsage>("get_oauth_usage");
-      } catch {
-        return null;
+        const data = await tauriInvoke<OAuthUsage>("get_oauth_usage");
+        return { data, error: null };
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        // eslint-disable-next-line no-console
+        console.warn("[oauth_usage] fetch failed:", msg);
+        return { data: null, error: msg };
       }
     },
     staleTime: 5 * 60_000,
