@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, NavLink, useNavigate } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { useTranslation } from "react-i18next";
 import { onOpenUrl, getCurrent } from "@tauri-apps/plugin-deep-link";
 import "@/i18n/index";
@@ -17,7 +19,21 @@ import { signOut } from "@/lib/supabase";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { Avatar } from "@/components/Avatar";
 
-const queryClient = new QueryClient();
+// 캐시를 localStorage에 영속화 — 앱 재시작 시 옛 데이터를 즉시 표시하고 백그라운드 refetch.
+// MCP / 사용량 페이지가 cold start에 즉시 보이도록 하는 핵심.
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      gcTime: 1000 * 60 * 60 * 24, // 24h: persist 대상이 되려면 gcTime이 충분히 길어야 함
+      staleTime: 1000 * 30,
+    },
+  },
+});
+
+const persister = createSyncStoragePersister({
+  storage: typeof window !== "undefined" ? window.localStorage : undefined,
+  key: "madup-token-monitor:rq",
+});
 
 const NAV_ITEMS = [
   { path: "/", label: "nav.dashboard" },
@@ -186,7 +202,10 @@ function DeepLinkBridge() {
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{ persister, maxAge: 1000 * 60 * 60 * 24 * 7 }}
+    >
       <BrowserRouter>
         <DeepLinkBridge />
         <Routes>
@@ -194,6 +213,6 @@ export default function App() {
           <Route path="/*" element={<Layout />} />
         </Routes>
       </BrowserRouter>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 }

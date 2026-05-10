@@ -5,10 +5,14 @@ import { McpBarChart } from "@/components/charts/McpBarChart";
 
 export function MCP() {
   const { t } = useTranslation();
-  const { data: myMcp, isLoading: myLoading } = useTopMcp("30d");
-  const { data: companyMcp, isLoading: compLoading } = useCompanyTopMcp();
+  const { data: myMcp, isLoading: myLoading, isFetching: myFetching } = useTopMcp("30d");
+  const { data: companyMcp, isFetching: compFetching } = useCompanyTopMcp();
 
-  if (myLoading || compLoading) {
+  // localStorage persist 덕분에 두 번째 진입부터는 myMcp가 즉시 채워짐.
+  // 진짜 첫 진입(캐시 0건)일 때만 spinner를 보여주고, 그 외엔 옛 데이터를 즉시 + 백그라운드 refetch.
+  const hasCachedData = !!myMcp;
+
+  if (!hasCachedData && myLoading) {
     return (
       <div className="flex items-center justify-center h-64 text-graphite text-sm">
         불러오는 중...
@@ -27,6 +31,7 @@ export function MCP() {
   const teamAvgMap = new Map(
     (companyMcp ?? []).map((m) => [m.mcp_server, Math.round(m.count / 10)])
   );
+  const refreshing = myFetching || compFetching;
 
   return (
     <div className="px-10 py-10 space-y-10 max-w-[1366px] mx-auto">
@@ -38,7 +43,12 @@ export function MCP() {
             내가 가장 많이 호출한 MCP 서버 TOP 10과 사내 평균을 비교해 보세요.
           </p>
         </div>
-        <span className="hp-badge-soft">Top 10 · Personal vs Team</span>
+        <div className="flex items-center gap-2">
+          {refreshing && (
+            <span className="text-[11px] text-graphite italic">갱신 중…</span>
+          )}
+          <span className="hp-badge-soft">Top 10 · Personal vs Team</span>
+        </div>
       </header>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

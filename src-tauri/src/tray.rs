@@ -1,5 +1,4 @@
 use tauri::{
-    menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Manager, Runtime,
 };
@@ -14,29 +13,33 @@ fn show_and_focus<R: Runtime>(app: &AppHandle<R>) {
     }
     #[cfg(target_os = "macos")]
     {
-        let _ = app.show(); // NSApp setActivationPolicy(.regular) 동등
+        let _ = app.show();
     }
 }
 
-pub fn setup_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
-    let show_item = MenuItem::with_id(app, "show", "열기", true, None::<&str>)?;
-    let hide_item = MenuItem::with_id(app, "hide", "숨기기", true, None::<&str>)?;
-    let quit_item = MenuItem::with_id(app, "quit", "종료", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&show_item, &hide_item, &quit_item])?;
+fn toggle_window<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(w) = app.get_webview_window("main") {
+        let visible = w.is_visible().unwrap_or(false);
+        let focused = w.is_focused().unwrap_or(false);
+        if visible && focused {
+            let _ = w.hide();
+            return;
+        }
+    }
+    show_and_focus(app);
+}
 
-    TrayIconBuilder::new()
-        .menu(&menu)
+pub fn setup_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
+    let mut builder = TrayIconBuilder::new()
         .tooltip("매드업 토큰 모니터")
-        .on_menu_event(|app, event| match event.id.as_ref() {
-            "show" => show_and_focus(app),
-            "hide" => {
-                if let Some(w) = app.get_webview_window("main") {
-                    let _ = w.hide();
-                }
-            }
-            "quit" => app.exit(0),
-            _ => {}
-        })
+        .show_menu_on_left_click(false);
+
+    // 트레이 아이콘은 앱 default window icon (bundle의 madup-favicon)을 그대로 사용.
+    if let Some(icon) = app.default_window_icon().cloned() {
+        builder = builder.icon(icon).icon_as_template(false);
+    }
+
+    builder
         .on_tray_icon_event(|tray, event| {
             if let TrayIconEvent::Click {
                 button: MouseButton::Left,
@@ -44,19 +47,9 @@ pub fn setup_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
                 ..
             } = event
             {
-                let app = tray.app_handle();
-                if let Some(w) = app.get_webview_window("main") {
-                    let visible = w.is_visible().unwrap_or(false);
-                    let focused = w.is_focused().unwrap_or(false);
-                    if visible && focused {
-                        let _ = w.hide();
-                    } else {
-                        show_and_focus(app);
-                    }
-                }
+                toggle_window(tray.app_handle());
             }
         })
         .build(app)?;
-
     Ok(())
 }
