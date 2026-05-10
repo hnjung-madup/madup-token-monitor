@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSummary, useTimeseries, useHeatmap, useOAuthUsage, refreshOAuthUsage } from "@/hooks/useUsage";
 import { useQueryClient } from "@tanstack/react-query";
@@ -44,6 +44,32 @@ function monthKey(ts: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function yearKey(ts: number): string {
+  return String(new Date(ts).getFullYear());
+}
+
+// "5월 2주차" 같은 한국어 라벨. 주의 시작(월요일) 이 속한 달의 N번째 월요일이 N주차.
+function weekLabel(weekStartDate: string): string {
+  const d = new Date(weekStartDate + "T00:00:00");
+  const month = d.getMonth() + 1;
+  const firstOfMonth = new Date(d.getFullYear(), d.getMonth(), 1);
+  const firstDow = (firstOfMonth.getDay() + 6) % 7; // Mon=0
+  const firstMondayDate = 1 + ((7 - firstDow) % 7);
+  const weekIdx = Math.floor((d.getDate() - firstMondayDate) / 7) + 1;
+  return `${month}월 ${Math.max(1, weekIdx)}주차`;
+}
+
+// "26년 5월"
+function monthLabel(monthKey: string): string {
+  const [y, m] = monthKey.split("-");
+  return `${y.slice(2)}년 ${parseInt(m, 10)}월`;
+}
+
+// "26년"
+function yearLabel(year: string): string {
+  return `${year.slice(2)}년`;
+}
+
 // 일자 키는 local timezone 기준 — UTC로 묶으면 한국 사용자의 KST 9시 이전 작업이
 // 전날 UTC로 빠져나가서 "오늘"이 비어 보인다.
 function localDateKey(ts: number): string {
@@ -81,12 +107,15 @@ function pctDiff(a: number, b: number): number {
   return (a - b) / b;
 }
 
-const DAILY_CARD_LIMIT: Record<Range, number> = { "1d": 1, "7d": 7, "30d": 30 };
+// daily 모드의 셀렉트 옵션 (1d/7d/30d) 별 표시할 row 개수.
+const DAILY_CARD_LIMIT: Partial<Record<Range, number>> = { "1d": 1, "7d": 7, "30d": 30 };
 
 export function Dashboard() {
   const { t } = useTranslation();
   const [dailyRange, setDailyRange] = useState<Range>("7d");
   const [dailyGranularity, setDailyGranularity] = useState<Granularity>("daily");
+  const [selectedMonth, setSelectedMonth] = useState<string>(""); // "YYYY-MM"
+  const [selectedYear, setSelectedYear] = useState<string>(""); // "YYYY"
   const [dailyMetric, setDailyMetric] = useState<"tokens" | "cost">("tokens");
   const [dailyView, setDailyView] = useState<"chart" | "list">("list");
 
@@ -95,6 +124,8 @@ export function Dashboard() {
   const { data: summary1 } = useSummary("1d");
   const { data: tsDaily } = useTimeseries(dailyRange);
   const { data: tsMonth } = useTimeseries("30d");
+  // weekly/monthly 모드는 가능한 월/년 옵션 + 선택된 구간의 데이터를 위해 전체 history 사용.
+  const { data: tsAll } = useTimeseries("all");
   const { data: heatmap } = useHeatmap(56);
   const { data: oauthResp } = useOAuthUsage();
   const oauthUsage = oauthResp?.data ?? null;
@@ -111,10 +142,44 @@ export function Dashboard() {
     }
   }
 
-  const dailyAggregated = useMemo(
-    () => aggregateByPeriod(tsDaily ?? [], dailyGranularity),
-    [tsDaily, dailyGranularity],
-  );
+  // weekly 모드의 사용 가능한 월 옵션 (데이터가 있는 달, 최신순).
+  const availableMonths = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of tsAll ?? []) set.add(monthKey(p.ts));
+    return Array.from(set).sort().reverse();
+  }, [tsAll]);
+
+  // monthly 모드의 사용 가능한 년 옵션.
+  const availableYears = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of tsAll ?? []) set.add(yearKey(p.ts));
+    return Array.from(set).sort().reverse();
+  }, [tsAll]);
+
+  // granularity 변경 또는 옵션 변동 시 default 선택.
+  useEffect(() => {
+    if (dailyGranularity === "weekly" && availableMonths.length > 0 && !availableMonths.includes(selectedMonth)) {
+      setSelectedMonth(availableMonths[0]);
+    }
+    if (dailyGranularity === "monthly" && availableYears.length > 0 && !availableYears.includes(selectedYear)) {
+      setSelectedYear(availableYears[0]);
+    }
+  }, [dailyGranularity, availableMonths, availableYears, selectedMonth, selectedYear]);
+
+  // List/Chart 가 사용할 그룹핑 + 필터된 데이터.
+  const dailyAggregated = useMemo(() => {
+    if (dailyGranularity === "daily") {
+      return aggregateByPeriod(tsDaily ?? [], "daily");
+    }
+    if (dailyGranularity === "weekly") {
+      // 모든 데이터를 주별로 합산 → 선택된 월의 주차들만 (주의 시작일 기준).
+      const all = aggregateByPeriod(tsAll ?? [], "weekly");
+      return all.filter((w) => monthKey(new Date(w.date + "T00:00:00").getTime()) === selectedMonth);
+    }
+    // monthly: 모든 데이터를 월별 합산 → 선택된 년의 월들.
+    const all = aggregateByPeriod(tsAll ?? [], "monthly");
+    return all.filter((m) => m.date.startsWith(selectedYear + "-"));
+  }, [dailyGranularity, tsDaily, tsAll, selectedMonth, selectedYear]);
 
   // 캘린더 월(이번 달 1일~오늘) 합산 — 30d rolling이 아닌 정확한 "5월" 같은 의미.
   const monthToDate = useMemo(() => {
@@ -184,8 +249,11 @@ export function Dashboard() {
 
   const week = summary7;
 
-  const dailyLimit = DAILY_CARD_LIMIT[dailyRange];
-  const dailyRows = dailyAggregated.slice(-dailyLimit);
+  const dailyLimit = DAILY_CARD_LIMIT[dailyRange] ?? 30;
+  // daily 모드는 1d/7d/30d 기간 limit. weekly/monthly 는 이미 selectedMonth/Year 로
+  // 필터된 결과라 모두 표시.
+  const dailyRows =
+    dailyGranularity === "daily" ? dailyAggregated.slice(-dailyLimit) : dailyAggregated;
 
   function copyDailyToClipboard() {
     const lines = [
@@ -334,12 +402,28 @@ export function Dashboard() {
               options={GRANULARITIES}
               ariaLabel="단위 선택"
             />
-            <Select
-              value={dailyRange}
-              onChange={(v) => setDailyRange(v as Range)}
-              options={RANGES.map((r) => ({ value: r.value, label: t(r.label) }))}
-              ariaLabel="기간 선택"
-            />
+            {dailyGranularity === "daily" ? (
+              <Select
+                value={dailyRange}
+                onChange={(v) => setDailyRange(v as Range)}
+                options={RANGES.map((r) => ({ value: r.value, label: t(r.label) }))}
+                ariaLabel="기간 선택"
+              />
+            ) : dailyGranularity === "weekly" ? (
+              <Select
+                value={selectedMonth}
+                onChange={setSelectedMonth}
+                options={availableMonths.map((m) => ({ value: m, label: monthLabel(m) }))}
+                ariaLabel="월 선택"
+              />
+            ) : (
+              <Select
+                value={selectedYear}
+                onChange={setSelectedYear}
+                options={availableYears.map((y) => ({ value: y, label: yearLabel(y) }))}
+                ariaLabel="년 선택"
+              />
+            )}
           </div>
           <div className="flex items-center gap-1">
             <div className="inline-flex rounded-md border border-hairline overflow-hidden text-[11px]">
@@ -408,7 +492,13 @@ export function Dashboard() {
                       empty ? "opacity-50" : ""
                     }`}
                   >
-                    <span className="text-[11px] font-mono text-charcoal">{d.date}</span>
+                    <span className="text-[11px] font-mono text-charcoal">
+                      {dailyGranularity === "weekly"
+                        ? weekLabel(d.date)
+                        : dailyGranularity === "monthly"
+                          ? monthLabel(d.date)
+                          : d.date}
+                    </span>
                     <span
                       className={`text-[12px] font-bold tabular-nums ${
                         empty ? "text-graphite" : "text-primary"

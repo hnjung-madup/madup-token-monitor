@@ -52,7 +52,7 @@ export interface DayCount {
   cost_usd: number;
 }
 
-export type Range = "1d" | "7d" | "30d";
+export type Range = "1d" | "7d" | "30d" | "365d" | "all";
 
 export interface LeaderboardEntry {
   rank: number;
