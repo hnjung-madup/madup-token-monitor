@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useSummary, useTimeseries, useHeatmap, useOAuthUsage } from "@/hooks/useUsage";
+import { useSummary, useTimeseries, useHeatmap, useOAuthUsage, refreshOAuthUsage } from "@/hooks/useUsage";
+import { useQueryClient } from "@tanstack/react-query";
 import { DailyBarChart } from "@/components/charts/DailyBarChart";
 import { ToolDonutChart } from "@/components/charts/ToolDonutChart";
 import { ModelBarChart } from "@/components/charts/ModelBarChart";
@@ -98,6 +99,17 @@ export function Dashboard() {
   const { data: oauthResp } = useOAuthUsage();
   const oauthUsage = oauthResp?.data ?? null;
   const oauthError = oauthResp?.error ?? null;
+  const qc = useQueryClient();
+  const [refreshing, setRefreshing] = useState(false);
+  async function handleRefreshQuota() {
+    setRefreshing(true);
+    try {
+      const result = await refreshOAuthUsage();
+      qc.setQueryData(["oauthUsage"], result);
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   const dailyAggregated = useMemo(() => aggregateByDay(tsDaily ?? []), [tsDaily]);
 
@@ -260,13 +272,23 @@ export function Dashboard() {
           <p className="text-[11px] tracking-[0.18em] uppercase font-bold text-graphite">
             사용량 한도
           </p>
-          <span className="text-[11px] text-graphite" title={oauthError ?? undefined}>
-            {hasRealQuota
-              ? `Claude OAuth API 실시간${oauthUsage?.is_stale ? " (캐시)" : ""}`
-              : oauthError
-                ? `OAuth 오류: ${oauthError.length > 60 ? oauthError.slice(0, 60) + "…" : oauthError}`
-                : "Claude 구독 기준 — 추정값 (OAuth 미연결)"}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-graphite" title={oauthError ?? undefined}>
+              {hasRealQuota
+                ? `Claude OAuth API 실시간${oauthUsage?.is_stale ? " (캐시)" : ""}`
+                : oauthError
+                  ? `OAuth 오류: ${oauthError.length > 60 ? oauthError.slice(0, 60) + "…" : oauthError}`
+                  : "Claude 구독 기준 — 추정값 (OAuth 미연결)"}
+            </span>
+            <button
+              onClick={handleRefreshQuota}
+              disabled={refreshing}
+              className="px-2 py-1 text-[11px] font-semibold rounded-md border border-hairline bg-canvas text-charcoal hover:bg-cloud transition-colors disabled:opacity-60"
+              title="OAuth 토큰 다시 시도"
+            >
+              {refreshing ? "갱신 중…" : "새로고침"}
+            </button>
+          </div>
         </div>
 
         <div className="space-y-5">

@@ -155,8 +155,7 @@ fn fetch_usage_from_api(token: &str) -> Result<OAuthUsage, String> {
     }
 }
 
-#[tauri::command]
-pub fn get_oauth_usage() -> Result<OAuthUsage, String> {
+fn get_oauth_usage_impl(force: bool) -> Result<OAuthUsage, String> {
     // 1) rate-limit window
     if let Ok(guard) = RATE_LIMIT_UNTIL.lock() {
         if let Some(until) = *guard {
@@ -173,11 +172,13 @@ pub fn get_oauth_usage() -> Result<OAuthUsage, String> {
         }
     }
 
-    // 2) fresh cache (10분 미만)
-    if let Ok(cache) = OAUTH_CACHE.lock() {
-        if let Some(ref e) = *cache {
-            if e.fetched_at.elapsed().as_secs() < 600 {
-                return Ok(e.usage.clone());
+    // 2) fresh cache (10분 미만, force일 땐 skip)
+    if !force {
+        if let Ok(cache) = OAUTH_CACHE.lock() {
+            if let Some(ref e) = *cache {
+                if e.fetched_at.elapsed().as_secs() < 600 {
+                    return Ok(e.usage.clone());
+                }
             }
         }
     }
@@ -196,4 +197,14 @@ pub fn get_oauth_usage() -> Result<OAuthUsage, String> {
         });
     }
     Ok(usage)
+}
+
+#[tauri::command]
+pub fn get_oauth_usage() -> Result<OAuthUsage, String> {
+    get_oauth_usage_impl(false)
+}
+
+#[tauri::command]
+pub fn refresh_oauth_usage() -> Result<OAuthUsage, String> {
+    get_oauth_usage_impl(true)
 }

@@ -115,6 +115,17 @@ export function useOAuthUsage() {
   });
 }
 
+export async function refreshOAuthUsage(): Promise<OAuthUsageWithError> {
+  if (IS_MOCK) return { data: null, error: null };
+  try {
+    const data = await tauriInvoke<OAuthUsage>("refresh_oauth_usage");
+    return { data, error: null };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { data: null, error: msg };
+  }
+}
+
 export function useCompanyTopMcp() {
   return useQuery({
     queryKey: ["company_top_mcp"],

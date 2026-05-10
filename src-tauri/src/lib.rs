@@ -34,7 +34,7 @@ fn greet(name: &str) -> String {
 
 use aggregator::sync_aggregates_now;
 use commands::{get_heatmap, get_summary, get_timeseries, get_top_mcp, get_top_plugins};
-use oauth_usage::get_oauth_usage;
+use oauth_usage::{get_oauth_usage, refresh_oauth_usage};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -57,10 +57,18 @@ pub fn run() {
             get_heatmap,
             sync_aggregates_now,
             get_oauth_usage,
+            refresh_oauth_usage,
         ])
         .setup(|app| {
             tray::setup_tray(app.handle())?;
             Ok(())
+        })
+        // 윈도우 close 버튼을 누르면 종료 대신 hide. 트레이에서 종료 메뉴로만 진짜 종료.
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                let _ = window.hide();
+                api.prevent_close();
+            }
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
