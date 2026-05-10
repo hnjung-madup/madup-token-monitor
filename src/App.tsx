@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { BrowserRouter, Routes, Route, NavLink, useNavigate } from "react-router-dom";
 import { QueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
@@ -216,13 +216,23 @@ function AggregateSyncDriver() {
 
 function DeepLinkBridge() {
   const navigate = useNavigate();
+  // navigate 는 react-router context 가 바뀔 때마다 새 ref 가 될 수 있음.
+  // useEffect 의 dep 으로 두면 location 변경마다 재실행되어 getCurrent() 가
+  // 같은 OAuth URL 을 반복 처리, 사용자가 탭을 이동할 때마다 navigate("/") 로
+  // 끌려가는 버그가 발생. ref 로 우회하고 deps 는 비워 mount 시 1회만 등록.
+  const navigateRef = useRef(navigate);
+  navigateRef.current = navigate;
+
   useEffect(() => {
     let unlisten: (() => void) | undefined;
+    const processed = new Set<string>();
 
     async function processUrl(url: string | null | undefined) {
       if (!url || !url.startsWith("madup-token-monitor://auth/callback")) return;
+      if (processed.has(url)) return;
+      processed.add(url);
       const ok = await handleAuthCallback(url);
-      if (ok) navigate("/", { replace: true });
+      if (ok) navigateRef.current("/", { replace: true });
     }
 
     getCurrent()
@@ -236,7 +246,7 @@ function DeepLinkBridge() {
       .catch(() => {});
 
     return () => unlisten?.();
-  }, [navigate]);
+  }, []);
   return null;
 }
 
