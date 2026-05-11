@@ -1,6 +1,10 @@
 const KRW_PER_USD = 1380;
 
 export function formatTokens(n: number): string {
+  if (n >= 1_000_000_000) {
+    const v = n / 1_000_000_000;
+    return `${v >= 10 ? Math.round(v) : v.toFixed(1)}B tok`;
+  }
   if (n >= 1_000_000) return `${Math.round(n / 1_000_000)}M tok`;
   if (n >= 1_000) return `${Math.round(n / 1_000)}K tok`;
   return `${Math.round(n)} tok`;
@@ -36,7 +40,10 @@ export function formatPercent(n: number): string {
 
 // Compact tokens without "tok" suffix — for hero displays.
 export function formatTokensCompact(n: number): string {
-  if (n >= 1_000_000_000) return `${Math.round(n / 1_000_000_000)}B`;
+  if (n >= 1_000_000_000) {
+    const v = n / 1_000_000_000;
+    return `${v >= 10 ? Math.round(v) : v.toFixed(1)}B`;
+  }
   if (n >= 1_000_000) return `${Math.round(n / 1_000_000)}M`;
   if (n >= 1_000) return `${Math.round(n / 1_000)}K`;
   return `${Math.round(n)}`;

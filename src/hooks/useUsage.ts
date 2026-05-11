@@ -201,10 +201,14 @@ export interface CompanyLeaderboardEntry {
 
 export type LeaderboardRange = "today" | "week" | "month";
 
+// RPC get_top_users 의 WHERE 절: `date >= current_date - (range_days || ' days')::interval`.
+// "오늘만" 을 원하면 range_days=0 (date >= today). 7일치 = 6 (오늘 포함 6일 전부터).
+// 1/7/30 을 그대로 보내면 N+1 일치가 합산되어 리더보드가 부풀려 보임 (대시보드 88M vs
+// 리더보드 1007M 처럼 어제 분량까지 더해진 케이스).
 const RANGE_DAYS: Record<LeaderboardRange, number> = {
-  today: 1,
-  week: 7,
-  month: 30,
+  today: 0,
+  week: 6,
+  month: 29,
 };
 
 export function useCompanyLeaderboard(range: LeaderboardRange = "week") {
