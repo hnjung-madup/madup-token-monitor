@@ -13,15 +13,23 @@
 
 ## 설치
 
-[Releases](https://github.com/madup-dct/madup-token-monitor/releases) 페이지에서 최신 버전을 다운로드합니다.
+1. [Releases](https://github.com/madup-dct/madup-token-monitor/releases/latest) 에서 본인 칩에 맞는 dmg 다운로드
 
-| 플랫폼 | 파일 |
-|--------|------|
-| macOS Apple Silicon | `*_aarch64.dmg` |
-| macOS Intel | `*_x64.dmg` |
+   | 플랫폼 | 파일 |
+   |--------|------|
+   | macOS Apple Silicon (M1/M2/M3+) | `*_aarch64.dmg` |
+   | macOS Intel | `*_x64.dmg` |
 
-> 자동 업데이트가 내장되어 있어 새 버전 출시 시 앱 내에서 알림을 받을 수 있습니다.
-> 업데이트 서버 엔드포인트는 사내 배포 시 결정이 필요합니다 — `tauri.conf.json`의 `plugins.updater.endpoints` 참고.
+2. dmg 마운트 → **Applications** 폴더로 드래그
+3. **첫 실행 전** 터미널에서 한 번 실행 (Apple Developer ID 서명/notarization 미적용으로 인한 Gatekeeper 경고 회피):
+
+   ```bash
+   xattr -cr /Applications/madup-token-monitor.app
+   ```
+
+4. Launchpad 또는 Spotlight 에서 **매드업 토큰 모니터** 실행 → 메뉴바 우측 상단에 아이콘 표시
+
+> 새 버전이 출시되면 앱 안에서 자동 업데이트 알림이 뜹니다. 자동 업데이트로 받은 버전은 quarantine 이 안 붙어서 위 `xattr` 명령을 다시 실행할 필요 없습니다.
 
 ## Slack 연결
 
