@@ -32,13 +32,13 @@
 ### Site URL
 앱이 OAuth 후 사용자를 보낼 기본 URL. 우리 흐름은 **GitHub Pages 의 success page** 를 거쳐 deep link 호출:
 ```
-https://hnjung-madup.github.io/madup-token-monitor/auth-callback/
+https://madup-dct.github.io/madup-token-monitor/auth-callback/
 ```
 
 ### Additional Redirect URLs
 다음 두 개 등록 (정확히 일치해야 함):
 ```
-https://hnjung-madup.github.io/madup-token-monitor/auth-callback/
+https://madup-dct.github.io/madup-token-monitor/auth-callback/
 madup-token-monitor://auth/callback
 ```
 

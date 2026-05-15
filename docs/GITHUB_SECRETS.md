@@ -10,7 +10,7 @@
 |---|---|---|---|
 | `VITE_SUPABASE_URL` | Supabase Dashboard → Project Settings → API Keys → Project URL | ~40 chars | 프론트엔드가 Supabase 에 접속할 base URL. vite 가 빌드 시 `import.meta.env.VITE_SUPABASE_URL` 로 inline. |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | Supabase → API Keys → **anon public** 또는 **Publishable key** (`sb_publishable_*`) | 새 키는 ~46 chars / 구 JWT 는 ~200 chars | 클라이언트용 key. RLS 가 보호하므로 노출 OK. |
-| `VITE_AUTH_SUCCESS_URL` | OAuth 후 브라우저가 forward 될 https URL. 보통 GitHub Pages | ~65 chars | 예: `https://hnjung-madup.github.io/madup-token-monitor/auth-callback/`. 이 페이지가 fragment 받아 deep link 로 forward + 탭 닫기. |
+| `VITE_AUTH_SUCCESS_URL` | OAuth 후 브라우저가 forward 될 https URL. 보통 GitHub Pages | ~65 chars | 예: `https://madup-dct.github.io/madup-token-monitor/auth-callback/`. 이 페이지가 fragment 받아 deep link 로 forward + 탭 닫기. |
 | `TAURI_SIGNING_PRIVATE_KEY` | `pnpm tauri signer generate` 로 만든 `~/.tauri/madup-token-monitor.key` 의 **전체 내용** (multi-line) | ~600 chars | Updater bundle 서명. `createUpdaterArtifacts: true` 라 필수. |
 | `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | 위 키 생성 시 입력한 **비밀번호** | 사용자 정의 | private key 복호화. |
 
@@ -21,19 +21,19 @@
 ```bash
 # 권장: stdin 으로 줄바꿈 없이 등록 (붙여넣기 방식은 trailing newline 포함될 수 있음)
 printf '%s' 'https://gkzihjshfgururghuxit.supabase.co' \
-  | gh secret set VITE_SUPABASE_URL --repo hnjung-madup/madup-token-monitor
+  | gh secret set VITE_SUPABASE_URL --repo madup-dct/madup-token-monitor
 
 printf '%s' 'sb_publishable_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx' \
-  | gh secret set VITE_SUPABASE_PUBLISHABLE_KEY --repo hnjung-madup/madup-token-monitor
+  | gh secret set VITE_SUPABASE_PUBLISHABLE_KEY --repo madup-dct/madup-token-monitor
 
-printf '%s' 'https://hnjung-madup.github.io/madup-token-monitor/auth-callback/' \
-  | gh secret set VITE_AUTH_SUCCESS_URL --repo hnjung-madup/madup-token-monitor
+printf '%s' 'https://madup-dct.github.io/madup-token-monitor/auth-callback/' \
+  | gh secret set VITE_AUTH_SUCCESS_URL --repo madup-dct/madup-token-monitor
 
 # 멀티라인 키는 파일에서 직접
-gh secret set TAURI_SIGNING_PRIVATE_KEY < ~/.tauri/madup-token-monitor.key --repo hnjung-madup/madup-token-monitor
+gh secret set TAURI_SIGNING_PRIVATE_KEY < ~/.tauri/madup-token-monitor.key --repo madup-dct/madup-token-monitor
 
 # 비밀번호는 prompt 모드로 (히스토리 노출 방지)
-gh secret set TAURI_SIGNING_PRIVATE_KEY_PASSWORD --repo hnjung-madup/madup-token-monitor
+gh secret set TAURI_SIGNING_PRIVATE_KEY_PASSWORD --repo madup-dct/madup-token-monitor
 # → "Paste your secret:" 에 입력
 ```
 
@@ -41,7 +41,7 @@ gh secret set TAURI_SIGNING_PRIVATE_KEY_PASSWORD --repo hnjung-madup/madup-token
 
 ```bash
 # 등록 목록 (값은 안 보임)
-gh secret list --repo hnjung-madup/madup-token-monitor
+gh secret list --repo madup-dct/madup-token-monitor
 
 # 빌드 시 실제 inject 됐는지 — release.yml 의 "Write .env" step 출력에서:
 #   URL length: 40
@@ -63,8 +63,8 @@ cat ~/.tauri/madup-token-monitor.key.pub
 # → 출력 base64 문자열을 src-tauri/tauri.conf.json 에 붙여넣기
 
 # 3) GitHub Secret 두 개 모두 갱신
-gh secret set TAURI_SIGNING_PRIVATE_KEY < ~/.tauri/madup-token-monitor.key --repo hnjung-madup/madup-token-monitor
-gh secret set TAURI_SIGNING_PRIVATE_KEY_PASSWORD --repo hnjung-madup/madup-token-monitor
+gh secret set TAURI_SIGNING_PRIVATE_KEY < ~/.tauri/madup-token-monitor.key --repo madup-dct/madup-token-monitor
+gh secret set TAURI_SIGNING_PRIVATE_KEY_PASSWORD --repo madup-dct/madup-token-monitor
 ```
 
 > **주의**: 공개키 (`.pub`) 는 `tauri.conf.json` 에 들어가는 값.
@@ -78,7 +78,7 @@ gh secret set TAURI_SIGNING_PRIVATE_KEY_PASSWORD --repo hnjung-madup/madup-token
 # .env (gitignored)
 VITE_SUPABASE_URL=https://gkzihjshfgururghuxit.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxxxxxxxxxxx
-VITE_AUTH_SUCCESS_URL=https://hnjung-madup.github.io/madup-token-monitor/auth-callback/
+VITE_AUTH_SUCCESS_URL=https://madup-dct.github.io/madup-token-monitor/auth-callback/
 ```
 
 이 세 변수는 vite 가 빌드 시 `import.meta.env.*` 로 inline. 로컬 빌드도 정확한 값이어야 OAuth / 사내 집계가 동작.

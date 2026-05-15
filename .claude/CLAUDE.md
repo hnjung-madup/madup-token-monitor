@@ -96,7 +96,7 @@ pnpm install --dangerously-allow-all-builds
 cat > .env <<EOF
 VITE_SUPABASE_URL=https://<project-ref>.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxxxxxxxxxxx
-VITE_AUTH_SUCCESS_URL=https://hnjung-madup.github.io/madup-token-monitor/auth-callback/
+VITE_AUTH_SUCCESS_URL=https://madup-dct.github.io/madup-token-monitor/auth-callback/
 EOF
 
 # 4) 개발 모드 (vite dev + tauri dev — 별도 창에서 webview 실행)
@@ -264,11 +264,11 @@ gh run watch <run-id> --exit-status
 gh release edit v0.1.x --draft=false
 
 # Draft + tag 동시 정리
-for v in v0.1.10 v0.1.11; do gh release delete "$v" --yes --cleanup-tag --repo hnjung-madup/madup-token-monitor; done
+for v in v0.1.10 v0.1.11; do gh release delete "$v" --yes --cleanup-tag --repo madup-dct/madup-token-monitor; done
 git tag -d v0.1.10 v0.1.11
 
 # secret 안전 등록
-printf '%s' "$VAL" | gh secret set NAME --repo hnjung-madup/madup-token-monitor
+printf '%s' "$VAL" | gh secret set NAME --repo madup-dct/madup-token-monitor
 ```
 
 ## 12. 미완료 / 차후 항목

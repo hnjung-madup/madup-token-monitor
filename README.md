@@ -13,7 +13,7 @@
 
 ## 설치
 
-[Releases](https://github.com/madup-inc/madup-token-monitor/releases) 페이지에서 최신 버전을 다운로드합니다.
+[Releases](https://github.com/madup-dct/madup-token-monitor/releases) 페이지에서 최신 버전을 다운로드합니다.
 
 | 플랫폼 | 파일 |
 |--------|------|

@@ -33,7 +33,7 @@ pnpm tauri signer generate -w ~/.tauri/madup-token-monitor.key
 ```json
 "updater": {
   "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6...",
-  "endpoints": ["https://github.com/hnjung-madup/madup-token-monitor/releases/latest/download/latest.json"]
+  "endpoints": ["https://github.com/madup-dct/madup-token-monitor/releases/latest/download/latest.json"]
 }
 ```
 
@@ -83,7 +83,7 @@ git push origin main v0.1.1
 
 `releaseDraft: true` 로 설정되어 있어 자동 publish 되지 않습니다.
 
-1. https://github.com/hnjung-madup/madup-token-monitor/releases 진입
+1. https://github.com/madup-dct/madup-token-monitor/releases 진입
 2. 생성된 **Draft** Release 확인 (latest.json + 두 개 dmg/zip 첨부 확인)
 3. Release notes 보강 후 **Publish** 클릭
 

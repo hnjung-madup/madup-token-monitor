@@ -125,7 +125,7 @@ export function buildMockLeaderboard(myEmail?: string | null): LeaderboardEntry[
     "heesumin-madup",
     "sharkp08",
     "andyleeboo",
-    myEmail ? myEmail.split("@")[0] : "hnjung-madup",
+    myEmail ? myEmail.split("@")[0] : "me",
     "jungsooyun",
     "Byun11",
     "aldegad",
