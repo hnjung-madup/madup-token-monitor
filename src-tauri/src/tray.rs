@@ -1,9 +1,33 @@
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Manager, PhysicalPosition, Position, Rect, Runtime, Size,
 };
 
 pub const TRAY_ID: &str = "main-tray";
+
+/// 프로그램으로 popover 를 띄운 마지막 시각(ms epoch). `WindowEvent::Focused(false)` 의
+/// 자동 hide 가 deep-link 직후 popover 를 다시 숨겨버리는 race 를 막기 위한 grace flag.
+static LAST_PROGRAMMATIC_SHOW_MS: AtomicU64 = AtomicU64::new(0);
+
+/// `Focused(false)` 자동 hide grace period (ms). 이 시간 내에 띄워진 popover 는
+/// 포커스를 받지 못해도 hide 하지 않는다.
+pub const PROGRAMMATIC_SHOW_GRACE_MS: u64 = 1500;
+
+fn now_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
+/// `show_popover` 호출 직후 grace period 안에 있으면 true.
+pub fn within_programmatic_show_grace() -> bool {
+    now_ms().saturating_sub(LAST_PROGRAMMATIC_SHOW_MS.load(Ordering::SeqCst))
+        < PROGRAMMATIC_SHOW_GRACE_MS
+}
 
 /// `tauri::Position`/`Size` enum을 physical pixel 값으로 변환.
 fn rect_to_physical(rect: &Rect, scale: f64) -> (f64, f64, f64, f64) {
@@ -82,6 +106,34 @@ fn toggle_window_at<R: Runtime>(app: &AppHandle<R>, rect: &Rect) {
     }
     position_below_tray(app, rect);
     show_and_focus(app);
+}
+
+/// 트레이 아이콘 위치에 popover 를 노출. OAuth deep-link 콜백 후처럼
+/// 트레이 클릭 없이 외부 트리거로 윈도우를 띄워야 할 때 사용한다.
+/// 트레이 rect 가져오기에 실패해도 마지막 위치 그대로 show + focus 한다.
+pub fn show_popover<R: Runtime>(app: &AppHandle<R>) {
+    LAST_PROGRAMMATIC_SHOW_MS.store(now_ms(), Ordering::SeqCst);
+    if let Some(tray) = app.tray_by_id(TRAY_ID) {
+        if let Ok(Some(rect)) = tray.rect() {
+            position_below_tray(app, &rect);
+        }
+    }
+    // macOS 에서 background 상태의 앱은 `set_focus`(= `makeKeyAndOrderFront:`) 만으로
+    // frontmost 가 되지 않는다. 별도 프로세스에서 `osascript activate` 를 실행해
+    // NSApp activateIgnoringOtherApps: 와 동등한 효과를 낸다.
+    #[cfg(target_os = "macos")]
+    activate_macos_app();
+    show_and_focus(app);
+}
+
+#[cfg(target_os = "macos")]
+fn activate_macos_app() {
+    let _ = std::process::Command::new("osascript")
+        .args([
+            "-e",
+            r#"tell application id "com.madup.token-monitor" to activate"#,
+        ])
+        .spawn();
 }
 
 // 트레이 전용 아이콘 — 메뉴바에 어울리는 작은 마크.

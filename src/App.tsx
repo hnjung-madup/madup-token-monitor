@@ -4,6 +4,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { useTranslation } from "react-i18next";
+import { invoke } from "@tauri-apps/api/core";
 import { onOpenUrl, getCurrent } from "@tauri-apps/plugin-deep-link";
 import "@/i18n/index";
 import { Dashboard } from "@/pages/Dashboard";
@@ -229,6 +230,10 @@ function DeepLinkBridge() {
       if (!url || !url.startsWith("madup-token-monitor://auth/callback")) return;
       if (processed.has(url)) return;
       processed.add(url);
+      // popover 는 외부 브라우저로 포커스가 옮겨간 순간 자동 hide 됐을 가능성이 높다.
+      // deep-link 가 도착하면 인증 결과와 무관하게 윈도우를 다시 띄워 사용자가
+      // 로그인 결과(혹은 에러) 를 볼 수 있게 한다.
+      invoke("show_main_window").catch(() => {});
       const ok = await handleAuthCallback(url);
       if (ok) navigateRef.current("/", { replace: true });
     }
