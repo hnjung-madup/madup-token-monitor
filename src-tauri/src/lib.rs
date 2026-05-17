@@ -37,11 +37,11 @@ fn get_data_dir() -> Result<String, String> {
         .ok_or_else(|| "데이터 디렉토리를 찾을 수 없습니다".into())
 }
 
-/// 메뉴바 popover 윈도우 표시 + 포커스. OAuth deep-link 콜백 도착 직후
+/// 메인 윈도우 표시 + 포커스. OAuth deep-link 콜백 도착 직후
 /// 백그라운드에서 인증을 처리하는 동안 윈도우가 hidden 상태로 남는 것을 막기 위해 호출.
 #[tauri::command]
 fn show_main_window(app: tauri::AppHandle) {
-    tray::show_popover(&app);
+    tray::show_main_window(&app);
 }
 
 // ============================================================
@@ -51,7 +51,8 @@ fn show_main_window(app: tauri::AppHandle) {
 
 use aggregator::sync_aggregates_now;
 use commands::{
-    get_heatmap, get_summary, get_timeseries, get_today_cost_usd, get_top_mcp, get_top_plugins,
+    clear_cache_dir, delete_all_data, get_heatmap, get_settings, get_summary, get_timeseries,
+    get_today_cost_usd, get_top_mcp, get_top_plugins, set_setting,
 };
 use oauth_usage::{get_oauth_usage, refresh_oauth_usage};
 use tauri::Manager;
@@ -90,6 +91,10 @@ pub fn run() {
             sync_aggregates_now,
             get_oauth_usage,
             refresh_oauth_usage,
+            get_settings,
+            set_setting,
+            clear_cache_dir,
+            delete_all_data,
         ])
         .setup(|app| {
             tray::setup_tray(app.handle())?;
@@ -106,38 +111,20 @@ pub fn run() {
                     let s = url.as_str();
                     eprintln!("[deep-link] received: {}", s);
                     if s.starts_with("madup-token-monitor://auth/callback") {
-                        tray::show_popover(&handle);
+                        tray::show_main_window(&handle);
                     }
                 }
             });
 
             Ok(())
         })
-        // popover 동작: 포커스를 잃으면 자동으로 숨김 (메뉴바 드랍다운 UX).
-        // CloseRequested는 decorations:false라 거의 발생하지 않지만, 발생하면 hide로 흡수.
-        // Focused(false)는 헤더 드래그 시작 등으로도 잠깐 발생할 수 있어서 200ms 지연 후
-        // 여전히 unfocused일 때만 hide — 클릭&드래그가 중간에 끊기지 않도록.
-        .on_window_event(|window, event| match event {
-            tauri::WindowEvent::CloseRequested { api, .. } => {
+        // 풀 윈도우 모드: 트래픽 라이트 빨강(close)은 hide 로 흡수해 트레이로 복귀,
+        // 포커스 잃어도 hide 하지 않는다 (popover UX 제거).
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 let _ = window.hide();
                 api.prevent_close();
             }
-            tauri::WindowEvent::Focused(false) => {
-                let w = window.clone();
-                std::thread::spawn(move || {
-                    std::thread::sleep(std::time::Duration::from_millis(200));
-                    // deep-link 등으로 직전에 직접 띄운 popover 는 macOS 가
-                    // 아직 frontmost 전환 중일 수 있어 잠깐 Focused(false) 가 뜬다.
-                    // grace period 안이면 자동 hide 를 건너뛴다.
-                    if tray::within_programmatic_show_grace() {
-                        return;
-                    }
-                    if !w.is_focused().unwrap_or(true) {
-                        let _ = w.hide();
-                    }
-                });
-            }
-            _ => {}
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

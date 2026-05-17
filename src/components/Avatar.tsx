@@ -10,27 +10,29 @@ interface Props {
   title?: string;
 }
 
-const PALETTE = [
-  "#024ad8", // primary
-  "#0e3191", // primary-deep
-  "#296ef9", // primary-bright
-  "#1a1a1a", // ink
-  "#356373", // storm-deep
-  "#7fadbe", // storm-sea
-  "#b3262b", // bloom-deep
+/// 4-light signal palette gradient pairs. seed-hash 로 안정적으로 1개 선택.
+const GRADIENTS: [string, string, string][] = [
+  ["#4DA3FF", "#B68CFF", "#06122B"], // azure → violet (default)
+  ["#7BBCFF", "#2C7BE5", "#06122B"], // azure-bright → azure-deep
+  ["#B68CFF", "#8358D9", "#06122B"], // violet → violet-deep
+  ["#9BE15D", "#6CB23B", "#06170A"], // lime
+  ["#F5B544", "#C88A1C", "#1a1206"], // amber
+  ["#FF6B5C", "#D43F2E", "#3a0c08"], // coral
+  ["#7BBCFF", "#B68CFF", "#06122B"],
 ];
 
-function hashColor(seed: string) {
+function hashIdx(seed: string, mod: number) {
   let hash = 0;
-  for (let i = 0; i < seed.length; i++) hash = (hash << 5) - hash + seed.charCodeAt(i);
-  return PALETTE[Math.abs(hash) % PALETTE.length];
+  for (let i = 0; i < seed.length; i++)
+    hash = (hash << 5) - hash + seed.charCodeAt(i);
+  return Math.abs(hash) % mod;
 }
 
 export function Avatar({
   src,
   name,
   size = 32,
-  rounded = "md",
+  rounded = "full",
   className,
   title,
 }: Props) {
@@ -54,17 +56,19 @@ export function Avatar({
     );
   }
 
+  const [from, to, fg] = GRADIENTS[hashIdx(name || "?", GRADIENTS.length)];
   return (
     <span
       title={title ?? name}
       className={cn(
-        `${radius} inline-flex items-center justify-center text-on-primary font-bold shrink-0`,
+        `${radius} inline-flex items-center justify-center font-bold shrink-0`,
         className,
       )}
       style={{
         width: size,
         height: size,
-        backgroundColor: hashColor(name || "?"),
+        background: `linear-gradient(135deg, ${from} 0%, ${to} 100%)`,
+        color: fg,
         fontSize: Math.max(11, Math.floor(size * 0.42)),
       }}
     >

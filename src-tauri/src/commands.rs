@@ -1,5 +1,9 @@
 use rusqlite::params;
-use crate::db::{open, range_bounds};
+use serde_json::Value as JsonValue;
+use std::collections::BTreeMap;
+use std::path::PathBuf;
+
+use crate::db::{db_path, open, range_bounds};
 use crate::models::{DayCount, McpUsage, PluginUsage, Point, Summary, SourceSummary, ModelSummary};
 use crate::pricing::usd_to_krw_rate;
 
@@ -23,6 +27,87 @@ pub fn today_cost_usd() -> f64 {
 #[tauri::command]
 pub fn get_today_cost_usd() -> Result<f64, String> {
     Ok(today_cost_usd())
+}
+
+// =============================================================================
+// 앱 설정 — settings.json (data dir 안)
+// =============================================================================
+
+fn settings_path() -> Option<PathBuf> {
+    db_path().parent().map(|p| p.join("settings.json"))
+}
+
+fn read_settings() -> BTreeMap<String, JsonValue> {
+    let Some(path) = settings_path() else {
+        return BTreeMap::new();
+    };
+    let Ok(raw) = std::fs::read_to_string(&path) else {
+        return BTreeMap::new();
+    };
+    serde_json::from_str::<BTreeMap<String, JsonValue>>(&raw).unwrap_or_default()
+}
+
+fn write_settings(map: &BTreeMap<String, JsonValue>) -> Result<(), String> {
+    let path = settings_path().ok_or_else(|| "settings 경로를 찾을 수 없습니다".to_string())?;
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let raw = serde_json::to_string_pretty(map).map_err(|e| e.to_string())?;
+    std::fs::write(&path, raw).map_err(|e| e.to_string())
+}
+
+/// `show_menubar_cost` 가 `false` 일 때 false 반환. 기본값은 true.
+pub fn read_show_menubar_cost() -> bool {
+    let map = read_settings();
+    match map.get("show_menubar_cost") {
+        Some(JsonValue::Bool(b)) => *b,
+        _ => true,
+    }
+}
+
+#[tauri::command]
+pub fn get_settings() -> Result<JsonValue, String> {
+    let map = read_settings();
+    Ok(serde_json::to_value(map).unwrap_or(JsonValue::Null))
+}
+
+#[tauri::command]
+pub fn set_setting(key: String, value: JsonValue) -> Result<(), String> {
+    let mut map = read_settings();
+    map.insert(key, value);
+    write_settings(&map)
+}
+
+/// React Query 영속 캐시 등 클라이언트 캐시는 JS 측에서 비우고,
+/// 여기서는 SQLite WAL/SHM 등 부수 파일과 임시 캐시 디렉토리만 정리한다.
+#[tauri::command]
+pub fn clear_cache_dir() -> Result<u64, String> {
+    let Some(parent) = db_path().parent().map(|p| p.to_path_buf()) else {
+        return Err("데이터 디렉토리를 찾을 수 없습니다".into());
+    };
+    let mut bytes_freed: u64 = 0;
+    for name in ["usage.sqlite-wal", "usage.sqlite-shm"] {
+        let p = parent.join(name);
+        if let Ok(meta) = std::fs::metadata(&p) {
+            bytes_freed = bytes_freed.saturating_add(meta.len());
+        }
+        let _ = std::fs::remove_file(&p);
+    }
+    Ok(bytes_freed)
+}
+
+/// 모든 로컬 데이터 (SQLite + WAL/SHM + settings.json) 삭제.
+/// 호출 후 앱을 재시작해야 새 SQLite 가 다시 만들어진다.
+#[tauri::command]
+pub fn delete_all_data() -> Result<(), String> {
+    let Some(parent) = db_path().parent().map(|p| p.to_path_buf()) else {
+        return Err("데이터 디렉토리를 찾을 수 없습니다".into());
+    };
+    for name in ["usage.sqlite", "usage.sqlite-wal", "usage.sqlite-shm", "settings.json"] {
+        let p = parent.join(name);
+        let _ = std::fs::remove_file(&p);
+    }
+    Ok(())
 }
 
 #[tauri::command]

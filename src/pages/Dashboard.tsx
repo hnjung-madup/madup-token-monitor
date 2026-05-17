@@ -1,12 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useSummary, useTimeseries, useHeatmap, useOAuthUsage, refreshOAuthUsage } from "@/hooks/useUsage";
 import { useQueryClient } from "@tanstack/react-query";
+import {
+  useSummary,
+  useTimeseries,
+  useHeatmap,
+  useOAuthUsage,
+  refreshOAuthUsage,
+} from "@/hooks/useUsage";
 import { DailyBarChart } from "@/components/charts/DailyBarChart";
-import { MinimalBarList } from "@/components/MinimalBarList";
 import { HeatMap } from "@/components/HeatMap";
-import { SegmentedBar, quotaTextColor } from "@/components/SegmentedBar";
+import { MiniBarList } from "@/components/ui/MiniBarList";
+import { KpiCard } from "@/components/ui/KpiCard";
+import { Sparkline } from "@/components/ui/Sparkline";
+import { Segmented } from "@/components/ui/Segmented";
 import { Select } from "@/components/ui/Select";
+import { QuotaSegBar, quotaSignalClass } from "@/components/ui/QuotaSegBar";
 import {
   formatTokensCompact,
   formatUSD,
@@ -17,76 +26,58 @@ import {
 import type { Range, Point } from "@/types/models";
 
 const RANGES: { value: Range; label: string }[] = [
-  { value: "1d", label: "dashboard.period.today" },
   { value: "7d", label: "dashboard.period.week" },
   { value: "30d", label: "dashboard.period.month" },
 ];
 
 type Granularity = "daily" | "weekly" | "monthly";
-
 const GRANULARITIES: { value: Granularity; label: string }[] = [
   { value: "daily", label: "일자별" },
   { value: "weekly", label: "주별" },
   { value: "monthly", label: "월별" },
 ];
 
-// "주별" 키: ISO week 기준이 아니라 KST 기준 월요일 시작 주의 시작 일자.
+function localDateKey(ts: number): string {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 function weekStartKey(ts: number): string {
   const d = new Date(ts);
-  const dow = (d.getDay() + 6) % 7; // Mon=0
+  const dow = (d.getDay() + 6) % 7;
   d.setDate(d.getDate() - dow);
   return localDateKey(d.getTime());
 }
-
-// "월별" 키: YYYY-MM (local).
 function monthKey(ts: number): string {
   const d = new Date(ts);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
-
 function yearKey(ts: number): string {
   return String(new Date(ts).getFullYear());
 }
-
-// "5월 2주차" 같은 한국어 라벨. 주의 시작(월요일) 이 속한 달의 N번째 월요일이 N주차.
 function weekLabel(weekStartDate: string): string {
   const d = new Date(weekStartDate + "T00:00:00");
   const month = d.getMonth() + 1;
   const firstOfMonth = new Date(d.getFullYear(), d.getMonth(), 1);
-  const firstDow = (firstOfMonth.getDay() + 6) % 7; // Mon=0
+  const firstDow = (firstOfMonth.getDay() + 6) % 7;
   const firstMondayDate = 1 + ((7 - firstDow) % 7);
   const weekIdx = Math.floor((d.getDate() - firstMondayDate) / 7) + 1;
   return `${month}월 ${Math.max(1, weekIdx)}주차`;
 }
-
-// "26년 5월"
-function monthLabel(monthKey: string): string {
-  const [y, m] = monthKey.split("-");
+function monthLabel(mk: string): string {
+  const [y, m] = mk.split("-");
   return `${y.slice(2)}년 ${parseInt(m, 10)}월`;
 }
-
-// "26년"
 function yearLabel(year: string): string {
   return `${year.slice(2)}년`;
 }
 
-// 일자 키는 local timezone 기준 — UTC로 묶으면 한국 사용자의 KST 9시 이전 작업이
-// 전날 UTC로 빠져나가서 "오늘"이 비어 보인다.
-function localDateKey(ts: number): string {
-  const d = new Date(ts);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+interface AggRow {
+  date: string;
+  tokens: number;
+  cost: number;
 }
 
-// AI Token Monitor와 동일한 합산: input + output + cache_read + cache_write.
-// cache까지 포함해야 Claude API가 청구하는 진짜 사용량 = "토큰 사용량" 의미와 맞다.
-// (cache는 cards에 별도 라벨로도 표시되어 비교 가능)
-function aggregateByPeriod(
-  points: Point[],
-  granularity: Granularity,
-): { date: string; tokens: number; cost: number }[] {
+function aggregateByPeriod(points: Point[], granularity: Granularity): AggRow[] {
   const keyFn =
     granularity === "weekly" ? weekStartKey : granularity === "monthly" ? monthKey : localDateKey;
   const map = new Map<string, { tokens: number; cost: number }>();
@@ -107,116 +98,132 @@ function pctDiff(a: number, b: number): number {
   return (a - b) / b;
 }
 
-// daily 모드의 셀렉트 옵션 (1d/7d/30d) 별 표시할 row 개수.
-const DAILY_CARD_LIMIT: Partial<Record<Range, number>> = { "1d": 1, "7d": 7, "30d": 30 };
+function todayLabel(): string {
+  const d = new Date();
+  const days = ["일", "월", "화", "수", "목", "금", "토"];
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} (${days[d.getDay()]})`;
+}
+
+const DAILY_CARD_LIMIT: Partial<Record<Range, number>> = {
+  "1d": 1,
+  "7d": 7,
+  "30d": 30,
+};
 
 export function Dashboard() {
   const { t } = useTranslation();
+  const qc = useQueryClient();
   const [dailyRange, setDailyRange] = useState<Range>("7d");
   const [dailyGranularity, setDailyGranularity] = useState<Granularity>("daily");
-  const [selectedMonth, setSelectedMonth] = useState<string>(""); // "YYYY-MM"
-  const [selectedYear, setSelectedYear] = useState<string>(""); // "YYYY"
+  const [selectedMonth, setSelectedMonth] = useState<string>("");
+  const [selectedYear, setSelectedYear] = useState<string>("");
   const [dailyMetric, setDailyMetric] = useState<"tokens" | "cost">("tokens");
-  const [dailyView, setDailyView] = useState<"chart" | "list">("list");
+  const [dailyView, setDailyView] = useState<"chart" | "list">("chart");
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastSync, setLastSync] = useState<Date>(() => new Date());
+  const [, setTick] = useState(0);
+
+  // 1초마다 lastSync 상대시간 갱신.
+  useEffect(() => {
+    const id = setInterval(() => setTick((n) => n + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   const { data: summary30 } = useSummary("30d");
   const { data: summary7 } = useSummary("7d");
   const { data: summary1 } = useSummary("1d");
   const { data: tsDaily } = useTimeseries(dailyRange);
   const { data: tsMonth } = useTimeseries("30d");
-  // weekly/monthly 모드는 가능한 월/년 옵션 + 선택된 구간의 데이터를 위해 전체 history 사용.
   const { data: tsAll } = useTimeseries("all");
   const { data: heatmap } = useHeatmap(56);
   const { data: oauthResp } = useOAuthUsage();
   const oauthUsage = oauthResp?.data ?? null;
   const oauthError = oauthResp?.error ?? null;
-  const qc = useQueryClient();
-  const [refreshing, setRefreshing] = useState(false);
-  async function handleRefreshQuota() {
+
+  async function handleRefresh() {
     setRefreshing(true);
     try {
-      const result = await refreshOAuthUsage();
-      qc.setQueryData(["oauthUsage"], result);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["summary"] }),
+        qc.invalidateQueries({ queryKey: ["timeseries"] }),
+        qc.invalidateQueries({ queryKey: ["heatmap"] }),
+        refreshOAuthUsage().then((r) => qc.setQueryData(["oauthUsage"], r)),
+      ]);
+      setLastSync(new Date());
     } finally {
       setRefreshing(false);
     }
   }
 
-  // weekly 모드의 사용 가능한 월 옵션 (데이터가 있는 달, 최신순).
   const availableMonths = useMemo(() => {
     const set = new Set<string>();
     for (const p of tsAll ?? []) set.add(monthKey(p.ts));
     return Array.from(set).sort().reverse();
   }, [tsAll]);
-
-  // monthly 모드의 사용 가능한 년 옵션.
   const availableYears = useMemo(() => {
     const set = new Set<string>();
     for (const p of tsAll ?? []) set.add(yearKey(p.ts));
     return Array.from(set).sort().reverse();
   }, [tsAll]);
 
-  // granularity 변경 또는 옵션 변동 시 default 선택.
   useEffect(() => {
-    if (dailyGranularity === "weekly" && availableMonths.length > 0 && !availableMonths.includes(selectedMonth)) {
+    if (
+      dailyGranularity === "weekly" &&
+      availableMonths.length > 0 &&
+      !availableMonths.includes(selectedMonth)
+    ) {
       setSelectedMonth(availableMonths[0]);
     }
-    if (dailyGranularity === "monthly" && availableYears.length > 0 && !availableYears.includes(selectedYear)) {
+    if (
+      dailyGranularity === "monthly" &&
+      availableYears.length > 0 &&
+      !availableYears.includes(selectedYear)
+    ) {
       setSelectedYear(availableYears[0]);
     }
   }, [dailyGranularity, availableMonths, availableYears, selectedMonth, selectedYear]);
 
-  // List/Chart 가 사용할 그룹핑 + 필터된 데이터.
-  const dailyAggregated = useMemo(() => {
+  const dailyAggregated = useMemo<AggRow[]>(() => {
     if (dailyGranularity === "daily") {
       return aggregateByPeriod(tsDaily ?? [], "daily");
     }
     if (dailyGranularity === "weekly") {
-      // 모든 데이터를 주별로 합산 → 선택된 월의 주차들만 (주의 시작일 기준).
       const all = aggregateByPeriod(tsAll ?? [], "weekly");
-      return all.filter((w) => monthKey(new Date(w.date + "T00:00:00").getTime()) === selectedMonth);
+      return all.filter(
+        (w) => monthKey(new Date(w.date + "T00:00:00").getTime()) === selectedMonth,
+      );
     }
-    // monthly: 모든 데이터를 월별 합산 → 선택된 년의 월들.
-    const all = aggregateByPeriod(tsAll ?? [], "monthly");
-    return all.filter((m) => m.date.startsWith(selectedYear + "-"));
+    return aggregateByPeriod(tsAll ?? [], "monthly").filter((m) =>
+      m.date.startsWith(selectedYear + "-"),
+    );
   }, [dailyGranularity, tsDaily, tsAll, selectedMonth, selectedYear]);
 
-  // 캘린더 월(이번 달 1일~오늘) 합산 — 30d rolling이 아닌 정확한 "5월" 같은 의미.
-  const monthToDate = useMemo(() => {
-    if (!tsMonth) return { tokens: 0, cost: 0, cache: 0, days: 0 };
-    const now = new Date();
-    const monthStartTs = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-    const filtered = tsMonth.filter((p) => p.ts >= monthStartTs);
-    const dayKeys = new Set(filtered.map((p) => localDateKey(p.ts)));
-    let tokens = 0;
-    let cost = 0;
-    let cache = 0;
-    for (const p of filtered) {
-      const cr = p.cache_read ?? 0;
-      const cw = p.cache_write ?? 0;
-      tokens += p.input_tokens + p.output_tokens + cr + cw;
-      cost += p.cost_usd;
-      cache += cr + cw;
-    }
-    return { tokens, cost, cache, days: dayKeys.size };
+  const dailyLimit = DAILY_CARD_LIMIT[dailyRange] ?? 30;
+  const dailyRows =
+    dailyGranularity === "daily"
+      ? dailyAggregated.slice(-dailyLimit)
+      : dailyAggregated;
+
+  // 7d 합산 / 월간 합산.
+  const thisWeek = useMemo(() => calcRange(tsMonth ?? [], "this-week"), [tsMonth]);
+  const monthToDate = useMemo(() => calcRange(tsMonth ?? [], "this-month"), [tsMonth]);
+
+  // 7일 sparkline (오늘 포함 마지막 7일).
+  const sparkValues = useMemo(() => {
+    const agg = aggregateByPeriod(tsMonth ?? [], "daily").slice(-7);
+    return agg.map((a) => a.tokens);
   }, [tsMonth]);
 
   if (!summary1 || !summary7 || !summary30) {
     return (
-      <div className="flex items-center justify-center h-64 text-graphite text-sm">
+      <div className="grid place-items-center h-64 text-text-tertiary text-[13px]">
         불러오는 중...
       </div>
     );
   }
 
-  // AI Token Monitor와 동일한 합산: input + output + cache_read + cache_write.
-  // cache는 Claude API가 실제 청구하는 토큰이므로 메인 숫자에 포함.
-  // cache 비중은 별도 라벨로 분리 표시.
   const sumIO = (s: typeof summary1) =>
-    s.total_input_tokens +
-    s.total_output_tokens +
-    s.total_cache_read +
-    s.total_cache_write;
+    s.total_input_tokens + s.total_output_tokens + s.total_cache_read + s.total_cache_write;
   const sumCache = (s: typeof summary1) => s.total_cache_read + s.total_cache_write;
 
   const todayTokens = sumIO(summary1);
@@ -224,16 +231,12 @@ export function Dashboard() {
   const todayCost = summary1.total_cost_usd;
   const weekAvgDailyTokens = sumIO(summary7) / 7;
   const todayVsWeek = pctDiff(todayTokens, weekAvgDailyTokens);
-
   const todayMessages = summary1.message_count;
   const todaySessions = summary1.session_count;
 
-  // OAuth Usage API에서 실제 한도 utilization과 reset 시각을 받음.
-  // API 호출 실패 시(미로그인/네트워크) fallback으로 mock 표시.
   const fiveHour = oauthUsage?.five_hour ?? null;
   const sevenDay = oauthUsage?.seven_day ?? null;
   const hasRealQuota = fiveHour !== null || sevenDay !== null;
-
   const sessionUsage = fiveHour
     ? Math.min(1, fiveHour.utilization / 100)
     : Math.min(1, todayTokens / 250_000_000);
@@ -246,14 +249,24 @@ export function Dashboard() {
   const weeklyResetMs = sevenDay
     ? Math.max(0, new Date(sevenDay.resets_at).getTime() - Date.now())
     : 1 * 86_400_000 + 14 * 3600_000 + 53 * 60_000;
+  const monthlyUsage = Math.min(1, monthToDate.tokens / 15_000_000_000);
 
-  const week = summary7;
+  // 활동일 / 평균 일일 토큰 (최근 8주 = 56일)
+  const activeDays = (heatmap ?? []).filter((d) => d.count > 0).length;
+  const avgDailyTokens =
+    (heatmap ?? []).length > 0
+      ? sumIO(summary30) / Math.max(1, (heatmap ?? []).filter((d) => d.count > 0).length || 30)
+      : 0;
 
-  const dailyLimit = DAILY_CARD_LIMIT[dailyRange] ?? 30;
-  // daily 모드는 1d/7d/30d 기간 limit. weekly/monthly 는 이미 selectedMonth/Year 로
-  // 필터된 결과라 모두 표시.
-  const dailyRows =
-    dailyGranularity === "daily" ? dailyAggregated.slice(-dailyLimit) : dailyAggregated;
+  const toolItems = summary7.by_source
+    .map((s) => ({ label: s.source, value: s.cost_usd }))
+    .sort((a, b) => b.value - a.value);
+  const modelItems = summary7.by_model
+    .map((m) => ({
+      label: m.model.replace("claude-", ""),
+      value: m.input_tokens + m.output_tokens,
+    }))
+    .sort((a, b) => b.value - a.value);
 
   function copyDailyToClipboard() {
     const lines = [
@@ -262,342 +275,670 @@ export function Dashboard() {
         [d.date, dailyMetric === "tokens" ? d.tokens : d.cost.toFixed(4)].join("\t"),
       ),
     ];
-    navigator.clipboard.writeText(lines.join("\n"));
+    navigator.clipboard.writeText(lines.join("\n")).catch(() => {});
   }
 
+  function exportCsv() {
+    const lines = [
+      ["Date", "Tokens", "Cost USD"].join(","),
+      ...dailyRows.map((d) =>
+        [d.date, String(d.tokens), d.cost.toFixed(4)].join(","),
+      ),
+    ];
+    const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `madup-token-monitor-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  const todayDeltaUp = todayVsWeek >= 0;
+
   return (
-    <div className="px-4 py-4 space-y-4 max-w-full">
-      {/* TODAY CARD ============================================ */}
-      <section className="hp-card-flat shadow-[0_2px_8px_rgba(26,26,26,0.06)] p-3">
-        <p className="text-[10px] tracking-[0.18em] uppercase font-bold text-graphite mb-2">
-          오늘
-        </p>
-        <div className="flex items-baseline gap-2 flex-wrap">
-          <span className="text-[28px] font-bold text-primary leading-none tabular-nums">
-            {formatTokensCompact(todayTokens)}
-          </span>
-          <span className="text-[12px] text-graphite">tokens</span>
-        </div>
-        <div className="mt-1.5 flex items-center gap-2 flex-wrap">
-          <span className="text-[10px] text-graphite">
-            {formatTokensCompact(todayCache)} cached
-          </span>
-          {weekAvgDailyTokens > 0 && (
-            <span
-              className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                todayVsWeek >= 0
-                  ? "bg-bloom-rose text-bloom-deep"
-                  : "bg-primary-soft text-primary-deep"
-              }`}
-            >
-              {todayVsWeek >= 0 ? "+" : ""}
-              {(todayVsWeek * 100).toFixed(0)}% vs 7d 평균
-            </span>
-          )}
-        </div>
-
-        <div className="mt-3 grid grid-cols-3 gap-3 pt-3 border-t border-hairline">
-          <div>
-            <p className="text-[9px] uppercase tracking-[0.12em] font-bold text-graphite">
-              비용
-            </p>
-            <p className="text-[16px] font-bold text-[#f5a524] mt-0.5 leading-none">
-              {formatUSD(todayCost)}
-            </p>
-            <p className="text-[10px] text-graphite mt-0.5">{formatKRW(todayCost)}</p>
-          </div>
-          <div>
-            <p className="text-[9px] uppercase tracking-[0.12em] font-bold text-graphite">
-              요청
-            </p>
-            <p className="text-[16px] font-bold text-primary mt-0.5 leading-none">
-              {todayMessages.toLocaleString("ko-KR")}
-            </p>
-            <p className="text-[10px] text-graphite mt-0.5">건</p>
-          </div>
-          <div>
-            <p className="text-[9px] uppercase tracking-[0.12em] font-bold text-graphite">
-              세션
-            </p>
-            <p className="text-[16px] font-bold text-primary mt-0.5 leading-none">
-              {todaySessions}
-            </p>
-            <p className="text-[10px] text-graphite mt-0.5">개</p>
-          </div>
-        </div>
-      </section>
-
-      {/* USAGE QUOTA CARD ============================================ */}
-      <section className="hp-card-flat shadow-[0_2px_8px_rgba(26,26,26,0.06)] p-3">
-        <div className="flex items-center justify-between mb-3 gap-2">
-          <p className="text-[10px] tracking-[0.18em] uppercase font-bold text-graphite shrink-0">
-            사용량 한도
+    <div className="px-7 pt-6 pb-8">
+      {/* Content head */}
+      <div className="flex items-center justify-between gap-4 mb-5">
+        <div className="min-w-0">
+          <h1 className="text-[22px] font-bold tracking-[-0.01em] text-text-primary">
+            {t("nav.dashboard")}
+          </h1>
+          <p className="num text-[12px] text-text-tertiary mt-1 whitespace-nowrap">
+            {todayLabel()} · 마지막 동기화 {formatRelativeShort(Date.now() - lastSync.getTime())} 전
           </p>
-          <div className="flex items-center gap-1.5 min-w-0">
+        </div>
+        <div className="flex gap-2 items-center shrink-0">
+          <button onClick={exportCsv} className="mc-btn-outline">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M8 2v8M5 7l3 3 3-3M2 13h12" />
+            </svg>
+            내보내기
+          </button>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="mc-btn-primary disabled:opacity-70"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={refreshing ? "animate-spin" : undefined}
+            >
+              <path d="M2 8a6 6 0 0110.3-4.2L14 2v4h-4M14 8a6 6 0 01-10.3 4.2L2 14v-4h4" />
+            </svg>
+            {refreshing ? "동기화 중…" : "새로고침"}
+          </button>
+        </div>
+      </div>
+
+      {/* Grid */}
+      <div className="grid grid-cols-12 gap-4">
+        {/* ============ ROW 1: Today (col-8 feature) ============ */}
+        <section className="mc-card-feature col-span-8">
+          <header className="flex items-center justify-between mb-3.5 gap-3 relative">
+            <span className="mc-eyebrow">오늘 · DAILY</span>
+            <div className="flex items-center gap-2">
+              {weekAvgDailyTokens > 0 && (
+                <span className={todayDeltaUp ? "mc-delta-up" : "mc-delta-down"}>
+                  {todayDeltaUp ? "+" : "−"}
+                  {Math.abs(todayVsWeek * 100).toFixed(0)}% vs 7d 평균
+                </span>
+              )}
+            </div>
+          </header>
+
+          <div className="grid grid-cols-[1fr_220px] gap-6 items-start">
+            <div className="min-w-0">
+              <div className="flex items-baseline gap-2.5">
+                <span className="num text-[48px] font-medium leading-none tracking-[-0.02em] text-azure">
+                  {formatTokensCompact(todayTokens)}
+                </span>
+                <span className="text-[13px] text-text-secondary">
+                  tokens · <span className="num">{formatTokensCompact(todayCache)}</span> cached
+                </span>
+              </div>
+              <p className="text-[12px] text-text-tertiary mt-2.5 leading-snug">
+                입력 + 출력 + 캐시 read/write 합산. Claude API 청구 기준.
+              </p>
+
+              <div className="mt-6 grid grid-cols-4 gap-4 pt-5 border-t border-hairline">
+                <TodayStat
+                  label="비용"
+                  value={formatUSD(todayCost)}
+                  sub={<span className="num">{formatKRW(todayCost)}</span>}
+                  color="amber"
+                />
+                <TodayStat
+                  label="요청"
+                  value={todayMessages.toLocaleString("ko-KR")}
+                  sub="건"
+                  color="azure"
+                />
+                <TodayStat
+                  label="세션"
+                  value={String(todaySessions)}
+                  sub="개"
+                  color="violet"
+                />
+                <TodayStat
+                  label="활성 사용자"
+                  value="1"
+                  sub="기기 1대"
+                  color="lime"
+                />
+              </div>
+            </div>
+
+            <div
+              className="rounded-[10px] border border-hairline p-3.5 pb-2.5"
+              style={{ background: "var(--color-surface-2)" }}
+            >
+              <div className="text-[10px] font-bold tracking-[0.14em] uppercase text-text-tertiary mb-1.5">
+                최근 7일 추이
+              </div>
+              <div className="text-[15px] font-medium text-text-primary mb-1">
+                <span className="num">
+                  {formatTokensCompact(sparkValues[sparkValues.length - 1] ?? 0)}
+                </span>{" "}
+                <span className="text-text-tertiary text-[11px]">↘ 오늘</span>
+              </div>
+              <Sparkline values={sparkValues} width={190} height={84} />
+              <div className="flex justify-between num text-[9.5px] text-text-faint mt-1">
+                {(() => {
+                  const last7 = aggregateByPeriod(tsMonth ?? [], "daily").slice(-7);
+                  const first = last7[0]?.date.slice(5) ?? "";
+                  const mid = last7[Math.floor(last7.length / 2)]?.date.slice(5) ?? "";
+                  const lastEnd = last7[last7.length - 1]?.date.slice(5) ?? "";
+                  return (
+                    <>
+                      <span>{first}</span>
+                      <span>{mid}</span>
+                      <span>{lastEnd}</span>
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ============ ROW 1: Quota (col-4) ============ */}
+        <section className="mc-card col-span-4">
+          <header className="flex items-center justify-between mb-3.5 gap-3 relative">
+            <span className="text-[15px] font-semibold text-text-primary tracking-[-0.005em]">
+              사용량 한도
+            </span>
             <span
-              className="text-[10px] text-graphite truncate"
+              className="inline-flex items-center gap-1.5 h-[22px] px-2.5 rounded-full text-[11px] font-semibold whitespace-nowrap"
+              style={{
+                background: hasRealQuota ? "var(--color-azure-soft)" : "var(--color-surface-2)",
+                color: hasRealQuota ? "var(--color-azure-bright)" : "var(--color-text-tertiary)",
+              }}
               title={oauthError ?? undefined}
             >
+              <span
+                className="w-1.5 h-1.5 rounded-full"
+                style={{
+                  background: hasRealQuota ? "var(--color-azure)" : "var(--color-text-faint)",
+                }}
+              />
               {hasRealQuota
                 ? `OAuth 실시간${oauthUsage?.is_stale ? " (캐시)" : ""}`
                 : oauthError
-                  ? `오류: ${oauthError.length > 30 ? oauthError.slice(0, 30) + "…" : oauthError}`
+                  ? "오류"
                   : "추정값"}
             </span>
+          </header>
+
+          <QuotaRow
+            name="세션"
+            sub="(5h)"
+            meta={`Resets in ${formatRelativeTime(sessionResetMs)}`}
+            value={sessionUsage}
+          />
+          <QuotaRow
+            name="주간 한도"
+            meta={`Resets in ${formatRelativeTime(weeklyResetMs)}`}
+            value={weeklyUsage}
+          />
+          <QuotaRow
+            name="월간 누적"
+            meta={`이번 달 ${new Date().getMonth() + 1}/1~`}
+            value={monthlyUsage}
+          />
+
+          <div className="mt-5 pt-3.5 border-t border-hairline flex justify-between items-center">
+            <span className="text-[11px] text-text-tertiary">
+              {formatRelativeShort(Date.now() - lastSync.getTime())} 전 동기화됨
+            </span>
             <button
-              onClick={handleRefreshQuota}
+              onClick={handleRefresh}
               disabled={refreshing}
-              className="shrink-0 px-1.5 py-0.5 text-[10px] font-semibold rounded-md border border-hairline bg-canvas text-charcoal hover:bg-cloud transition-colors disabled:opacity-60"
-              title="OAuth 토큰 다시 시도"
+              className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-hairline bg-surface-2 text-text-secondary text-[11.5px] font-medium hover:text-text-primary hover:border-hairline-strong transition-colors disabled:opacity-60"
             >
-              {refreshing ? "갱신 중…" : "새로고침"}
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                className={refreshing ? "animate-spin" : undefined}
+              >
+                <path d="M2 8a6 6 0 0110.3-4.2L14 2v4h-4M14 8a6 6 0 01-10.3 4.2L2 14v-4h4" />
+              </svg>
+              새로고침
             </button>
           </div>
-        </div>
+        </section>
 
-        <div className="space-y-3">
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <p className="text-[12px] font-semibold text-ink">세션 (5h)</p>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-graphite">
-                  Resets in {formatRelativeTime(sessionResetMs)}
-                </span>
-                <span
-                  className={`text-[12px] font-bold tabular-nums ${quotaTextColor(sessionUsage)}`}
-                >
-                  {(sessionUsage * 100).toFixed(1)}%
-                </span>
-              </div>
-            </div>
-            <SegmentedBar value={sessionUsage} segments={12} color="quota" />
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <p className="text-[12px] font-semibold text-ink">주간 한도</p>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-graphite">
-                  Resets in {formatRelativeTime(weeklyResetMs)}
-                </span>
-                <span
-                  className={`text-[12px] font-bold tabular-nums ${quotaTextColor(weeklyUsage)}`}
-                >
-                  {(weeklyUsage * 100).toFixed(1)}%
-                </span>
-              </div>
-            </div>
-            <SegmentedBar value={weeklyUsage} segments={12} color="quota" />
-          </div>
-        </div>
-      </section>
-
-      {/* DAILY CARD ============================================ */}
-      <section className="hp-card-flat shadow-[0_2px_8px_rgba(26,26,26,0.06)] p-3">
-        <div className="flex items-center justify-between gap-2 mb-2">
-          <div className="flex items-center gap-1.5">
-            <Select
-              value={dailyGranularity}
-              onChange={(v) => setDailyGranularity(v as Granularity)}
-              options={GRANULARITIES}
-              ariaLabel="단위 선택"
-            />
-            {dailyGranularity === "daily" ? (
+        {/* ============ ROW 2: Daily breakdown (col-8) ============ */}
+        <section className="mc-card col-span-8">
+          <header className="flex items-center justify-between mb-3.5 gap-3 relative flex-wrap">
+            <div className="flex items-center gap-2">
+              <span className="text-[15px] font-semibold text-text-primary tracking-[-0.005em]">
+                기간별 사용량
+              </span>
               <Select
-                value={dailyRange}
-                onChange={(v) => setDailyRange(v as Range)}
-                options={RANGES.map((r) => ({ value: r.value, label: t(r.label) }))}
-                ariaLabel="기간 선택"
+                value={dailyGranularity}
+                onChange={(v) => setDailyGranularity(v as Granularity)}
+                options={GRANULARITIES}
+                ariaLabel="단위 선택"
               />
-            ) : dailyGranularity === "weekly" ? (
-              <Select
-                value={selectedMonth}
-                onChange={setSelectedMonth}
-                options={availableMonths.map((m) => ({ value: m, label: monthLabel(m) }))}
-                ariaLabel="월 선택"
-              />
-            ) : (
-              <Select
-                value={selectedYear}
-                onChange={setSelectedYear}
-                options={availableYears.map((y) => ({ value: y, label: yearLabel(y) }))}
-                ariaLabel="년 선택"
-              />
-            )}
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="inline-flex rounded-md border border-hairline overflow-hidden text-[11px]">
-              <button
-                onClick={() => setDailyMetric("tokens")}
-                className={`px-2 py-0.5 font-semibold transition-colors ${
-                  dailyMetric === "tokens"
-                    ? "bg-primary text-on-primary"
-                    : "text-charcoal hover:bg-cloud"
-                }`}
-              >
-                Tokens
-              </button>
-              <button
-                onClick={() => setDailyMetric("cost")}
-                className={`px-2 py-0.5 font-semibold border-l border-hairline transition-colors ${
-                  dailyMetric === "cost"
-                    ? "bg-primary text-on-primary"
-                    : "text-charcoal hover:bg-cloud"
-                }`}
-              >
-                Cost
-              </button>
+              {dailyGranularity === "daily" ? (
+                <Select
+                  value={dailyRange}
+                  onChange={(v) => setDailyRange(v as Range)}
+                  options={RANGES.map((r) => ({ value: r.value, label: t(r.label) }))}
+                  ariaLabel="기간 선택"
+                />
+              ) : dailyGranularity === "weekly" ? (
+                <Select
+                  value={selectedMonth}
+                  onChange={setSelectedMonth}
+                  options={availableMonths.map((m) => ({ value: m, label: monthLabel(m) }))}
+                  ariaLabel="월 선택"
+                />
+              ) : (
+                <Select
+                  value={selectedYear}
+                  onChange={setSelectedYear}
+                  options={availableYears.map((y) => ({ value: y, label: yearLabel(y) }))}
+                  ariaLabel="년 선택"
+                />
+              )}
             </div>
-            <div className="inline-flex rounded-md border border-hairline overflow-hidden text-[11px]">
-              <button
-                onClick={() => setDailyView("chart")}
-                className={`px-2 py-0.5 font-semibold transition-colors ${
-                  dailyView === "chart"
-                    ? "bg-primary text-on-primary"
-                    : "text-charcoal hover:bg-cloud"
-                }`}
-              >
-                Chart
-              </button>
-              <button
-                onClick={() => setDailyView("list")}
-                className={`px-2 py-0.5 font-semibold border-l border-hairline transition-colors ${
-                  dailyView === "list"
-                    ? "bg-primary text-on-primary"
-                    : "text-charcoal hover:bg-cloud"
-                }`}
-              >
-                List
-              </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <Segmented
+                value={dailyMetric}
+                onChange={setDailyMetric}
+                options={[
+                  { value: "tokens", label: "Tokens" },
+                  { value: "cost", label: "Cost" },
+                ]}
+                ariaLabel="지표 선택"
+              />
+              <Segmented
+                value={dailyView}
+                onChange={setDailyView}
+                options={[
+                  { value: "chart", label: "Chart" },
+                  { value: "list", label: "List" },
+                ]}
+                ariaLabel="보기 전환"
+              />
             </div>
-          </div>
-        </div>
+          </header>
 
-        {dailyView === "chart" ? (
-          <DailyBarChart data={tsDaily ?? []} />
-        ) : (
-          <div className="divide-y divide-hairline max-h-[280px] overflow-y-auto">
-            {dailyRows.length === 0 ? (
-              <p className="hp-caption text-graphite py-3 text-center">
-                {t("dashboard.empty")}
-              </p>
-            ) : (
-              dailyRows.map((d) => {
-                const value = dailyMetric === "tokens" ? d.tokens : d.cost;
-                const empty = value === 0;
-                return (
-                  <div
-                    key={d.date}
-                    className={`flex items-center justify-between py-1.5 px-1 ${
-                      empty ? "opacity-50" : ""
-                    }`}
-                  >
-                    <span className="text-[11px] font-mono text-charcoal">
-                      {dailyGranularity === "weekly"
-                        ? weekLabel(d.date)
-                        : dailyGranularity === "monthly"
-                          ? monthLabel(d.date)
-                          : d.date}
-                    </span>
-                    <span
-                      className={`text-[12px] font-bold tabular-nums ${
-                        empty ? "text-graphite" : "text-primary"
-                      }`}
-                    >
-                      {empty
-                        ? "—"
-                        : dailyMetric === "tokens"
-                          ? formatTokensCompact(d.tokens)
-                          : formatUSD(d.cost)}
-                    </span>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        )}
-
-        <div className="flex justify-end mt-2">
-          <button
-            onClick={copyDailyToClipboard}
-            className="px-2 py-0.5 text-[11px] font-semibold rounded-md border border-hairline bg-canvas text-charcoal hover:bg-cloud transition-colors"
+          <div
+            className="rounded-[10px] border border-hairline p-4"
+            style={{ background: "var(--color-surface-2)" }}
           >
-            Copy
-          </button>
-        </div>
-      </section>
+            {dailyView === "chart" ? (
+              <DailyBarChart
+                data={dailyRows.map((d) => ({
+                  date:
+                    dailyGranularity === "weekly"
+                      ? weekLabel(d.date)
+                      : dailyGranularity === "monthly"
+                        ? monthLabel(d.date)
+                        : d.date.slice(5),
+                  tokens: d.tokens,
+                  cost: d.cost,
+                }))}
+                metric={dailyMetric}
+                highlightLast={dailyGranularity === "daily"}
+              />
+            ) : (
+              <div className="max-h-[280px] overflow-y-auto -mx-2">
+                {dailyRows.length === 0 ? (
+                  <p className="text-[12px] text-text-tertiary py-4 text-center">
+                    {t("dashboard.empty")}
+                  </p>
+                ) : (
+                  dailyRows.map((d, i) => {
+                    const v = dailyMetric === "tokens" ? d.tokens : d.cost;
+                    const empty = v === 0;
+                    return (
+                      <div
+                        key={d.date}
+                        className={`flex items-center justify-between px-2 py-2 ${
+                          i > 0 ? "border-t border-hairline" : ""
+                        } ${empty ? "opacity-50" : ""}`}
+                      >
+                        <span className="num text-[12px] text-text-secondary font-medium whitespace-nowrap">
+                          {dailyGranularity === "weekly"
+                            ? weekLabel(d.date)
+                            : dailyGranularity === "monthly"
+                              ? monthLabel(d.date)
+                              : d.date}
+                        </span>
+                        <div className="flex items-center gap-3 flex-1 ml-3">
+                          <div className="flex-1 h-1 bg-surface-3 rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full"
+                              style={{
+                                width: empty ? "0%" : `${Math.max(2, (v / Math.max(...dailyRows.map((x) => (dailyMetric === "tokens" ? x.tokens : x.cost)), 1)) * 100)}%`,
+                                background:
+                                  "linear-gradient(90deg, var(--color-azure-deep), var(--color-azure))",
+                              }}
+                            />
+                          </div>
+                          <span
+                            className={`num text-[13px] font-medium whitespace-nowrap ${empty ? "text-text-faint" : "text-azure"}`}
+                          >
+                            {empty
+                              ? "—"
+                              : dailyMetric === "tokens"
+                                ? formatTokensCompact(d.tokens)
+                                : formatUSD(d.cost)}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
+          </div>
 
-      {/* THIS WEEK / THIS MONTH ============================================ */}
-      <section className="grid grid-cols-2 gap-3">
-        <div className="hp-card-flat shadow-[0_2px_8px_rgba(26,26,26,0.06)] p-3">
-          <p className="text-[10px] tracking-[0.18em] uppercase font-bold text-graphite mb-1">
-            이번 주
-          </p>
-          <p className="text-[24px] font-bold text-primary leading-none tabular-nums">
-            {formatTokensCompact(sumIO(week))}
-          </p>
-          <p className="text-[10px] text-graphite mt-1.5">
-            {formatTokensCompact(week.total_cache_read + week.total_cache_write)} cached
-          </p>
-          <p className="text-[10px] text-charcoal mt-0.5">
-            {formatUSD(week.total_cost_usd)} · {formatPercent(
-              week.total_input_tokens / Math.max(1, sumIO(week))
-            )} 입력
-          </p>
-        </div>
+          <div className="flex justify-between items-center mt-3.5">
+            <div className="flex gap-3.5 text-[11px] text-text-tertiary">
+              <Legend swatch="var(--color-azure)" label="Tokens (입력+출력+캐시)" />
+              <Legend swatch="var(--color-violet)" label="오늘" />
+              <Legend
+                swatch="var(--color-amber)"
+                label="평균"
+                shape="line"
+              />
+            </div>
+            <button
+              onClick={copyDailyToClipboard}
+              className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-hairline bg-surface-2 text-text-secondary text-[11.5px] font-medium hover:text-text-primary hover:border-hairline-strong transition-colors"
+            >
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+              >
+                <rect x="2" y="2" width="9" height="9" rx="1" />
+                <path d="M5 5h6v6" />
+              </svg>
+              Copy
+            </button>
+          </div>
+        </section>
 
-        <div className="hp-card-flat shadow-[0_2px_8px_rgba(26,26,26,0.06)] p-3">
-          <p className="text-[10px] tracking-[0.18em] uppercase font-bold text-graphite mb-1">
-            이번 달 ({new Date().getMonth() + 1}월)
-          </p>
-          <p className="text-[24px] font-bold text-primary leading-none tabular-nums">
-            {formatTokensCompact(monthToDate.tokens)}
-          </p>
-          <p className="text-[10px] text-graphite mt-1.5">
-            {formatTokensCompact(monthToDate.cache)} cached
-          </p>
-          <p className="text-[10px] text-charcoal mt-0.5">
-            {formatUSD(monthToDate.cost)} · {monthToDate.days}일
-          </p>
-        </div>
-      </section>
+        {/* ============ ROW 2: Activity heatmap (col-4) ============ */}
+        <section className="mc-card col-span-4">
+          <header className="flex items-center justify-between mb-3.5 gap-3 relative">
+            <span className="text-[15px] font-semibold text-text-primary tracking-[-0.005em]">
+              활동{" "}
+              <span className="text-text-tertiary font-normal text-[12px] ml-1">
+                최근 8주
+              </span>
+            </span>
+          </header>
 
-      {/* ACTIVITY 8 WEEKS ============================================ */}
-      <section className="hp-card-flat shadow-[0_2px_8px_rgba(26,26,26,0.06)] p-4">
-        <p className="text-[11px] tracking-[0.18em] uppercase font-bold text-graphite mb-4">
-          활동 (8주)
-        </p>
-        <HeatMap data={heatmap ?? []} weeks={8} />
-      </section>
+          <HeatMap data={heatmap ?? []} weeks={8} />
 
-      {/* SECONDARY: TOOL COST / MODEL USAGE — minimal bar lists ====== */}
-      <section className="hp-card-flat shadow-[0_2px_8px_rgba(26,26,26,0.06)] p-4">
-        <MinimalBarList
-          title="도구별 비용 (7일)"
-          items={summary7.by_source
-            .map((s) => ({ label: s.source, value: s.cost_usd }))
-            .sort((a, b) => b.value - a.value)}
-          color="#0aa9c9"
-          formatValue={(v) => formatUSD(v)}
-          emptyMessage="기록 없음"
+          <div className="mt-5 pt-3.5 border-t border-hairline grid grid-cols-2 gap-3.5">
+            <div>
+              <div className="text-[10px] font-bold tracking-[0.14em] uppercase text-text-tertiary mb-1.5">
+                평균 일일 토큰
+              </div>
+              <div className="num text-[20px] font-medium text-text-primary">
+                {formatTokensCompact(avgDailyTokens)}
+              </div>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold tracking-[0.14em] uppercase text-text-tertiary mb-1.5">
+                활동일
+              </div>
+              <div className="num text-[20px] font-medium text-lime">
+                {activeDays}/56
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ============ ROW 3: 4 col-3 cards ============ */}
+        <MiniStatCard
+          eyebrow="이번 주 · 월~일"
+          value={formatTokensCompact(thisWeek.tokens)}
+          suffix="tokens"
+          subline={
+            <>
+              <span className="num text-text-secondary">
+                {formatTokensCompact(thisWeek.cache)}
+              </span>{" "}
+              cached · {thisWeek.days}일 활동
+            </>
+          }
+          foot={[
+            { label: "비용", value: formatUSD(thisWeek.cost) },
+            {
+              label: "입력",
+              value: formatPercent(thisWeek.totalInput / Math.max(1, thisWeek.tokens)),
+            },
+          ]}
         />
-      </section>
 
-      <section className="hp-card-flat shadow-[0_2px_8px_rgba(26,26,26,0.06)] p-4">
-        <MinimalBarList
-          title="모델별 토큰 (7일)"
-          items={summary7.by_model
-            .map((m) => ({
-              label: m.model.replace("claude-", ""),
-              value: m.input_tokens + m.output_tokens,
-            }))
-            .sort((a, b) => b.value - a.value)}
-          color="#024ad8"
-          formatValue={(v) => formatTokensCompact(v)}
-          emptyMessage="기록 없음"
+        <MiniStatCard
+          eyebrow={`이번 달 · ${new Date().getMonth() + 1}월 1일~`}
+          value={formatTokensCompact(monthToDate.tokens)}
+          suffix="tokens"
+          subline={
+            <>
+              <span className="num text-text-secondary">
+                {formatTokensCompact(monthToDate.cache)}
+              </span>{" "}
+              cached · {monthToDate.days}일 활동
+            </>
+          }
+          foot={[
+            { label: "비용", value: formatUSD(monthToDate.cost) },
+            {
+              label: "입력",
+              value: formatPercent(monthToDate.totalInput / Math.max(1, monthToDate.tokens)),
+            },
+          ]}
         />
-      </section>
 
+        <section className="mc-card col-span-3">
+          <header className="mb-3.5">
+            <span className="mc-eyebrow">도구별 비용 · 7일</span>
+          </header>
+          <MiniBarList
+            items={toolItems}
+            formatValue={(v) => formatUSD(v)}
+            emphasizeMax="amber"
+          />
+        </section>
+
+        <section className="mc-card col-span-3">
+          <header className="mb-3.5">
+            <span className="mc-eyebrow">모델별 토큰 · 7일</span>
+          </header>
+          <MiniBarList
+            items={modelItems}
+            formatValue={(v) => formatTokensCompact(v)}
+            emphasizeMax="azure"
+          />
+        </section>
+      </div>
     </div>
   );
 }
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
+function calcRange(
+  ts: Point[],
+  kind: "this-week" | "this-month",
+): { tokens: number; cost: number; cache: number; days: number; totalInput: number } {
+  if (ts.length === 0)
+    return { tokens: 0, cost: 0, cache: 0, days: 0, totalInput: 0 };
+  const now = new Date();
+  let start: number;
+  let end: number;
+  if (kind === "this-week") {
+    const dow = (now.getDay() + 6) % 7;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - dow);
+    monday.setHours(0, 0, 0, 0);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+    start = monday.getTime();
+    end = sunday.getTime();
+  } else {
+    start = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    end = Date.now();
+  }
+  const filtered = ts.filter((p) => p.ts >= start && p.ts <= end);
+  const dayKeys = new Set(filtered.map((p) => localDateKey(p.ts)));
+  let tokens = 0,
+    cost = 0,
+    cache = 0,
+    totalInput = 0;
+  for (const p of filtered) {
+    const cr = p.cache_read ?? 0;
+    const cw = p.cache_write ?? 0;
+    tokens += p.input_tokens + p.output_tokens + cr + cw;
+    totalInput += p.input_tokens;
+    cost += p.cost_usd;
+    cache += cr + cw;
+  }
+  return { tokens, cost, cache, days: dayKeys.size, totalInput };
+}
+
+function formatRelativeShort(ms: number): string {
+  if (ms < 60_000) return `${Math.max(1, Math.floor(ms / 1000))}초`;
+  if (ms < 3600_000) return `${Math.floor(ms / 60_000)}분`;
+  if (ms < 86_400_000) return `${Math.floor(ms / 3600_000)}시간`;
+  return `${Math.floor(ms / 86_400_000)}일`;
+}
+
+interface TodayStatProps {
+  label: string;
+  value: string;
+  sub: React.ReactNode;
+  color: "amber" | "azure" | "violet" | "lime";
+}
+function TodayStat({ label, value, sub, color }: TodayStatProps) {
+  const colorClass = {
+    amber: "text-amber",
+    azure: "text-azure",
+    violet: "text-violet",
+    lime: "text-lime",
+  }[color];
+  return (
+    <div>
+      <div className="text-[10.5px] font-bold tracking-[0.14em] uppercase text-text-tertiary mb-2 whitespace-nowrap">
+        {label}
+      </div>
+      <div className={`num text-[22px] font-medium leading-tight tracking-[-0.01em] ${colorClass}`}>
+        {value}
+      </div>
+      <div className="text-[11px] text-text-tertiary mt-1">{sub}</div>
+    </div>
+  );
+}
+
+interface QuotaRowProps {
+  name: string;
+  sub?: string;
+  meta: string;
+  value: number;
+}
+function QuotaRow({ name, sub, meta, value }: QuotaRowProps) {
+  const pct = (value * 100).toFixed(1);
+  return (
+    <div className="mt-4 first:mt-1">
+      <div className="flex items-center justify-between mb-2 gap-3">
+        <div className="text-[13px] font-semibold text-text-primary whitespace-nowrap">
+          {name}
+          {sub && (
+            <span className="font-normal text-text-tertiary text-[11px] ml-1.5">
+              {sub}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2.5 text-[11px] text-text-tertiary whitespace-nowrap shrink-0">
+          <span>{meta}</span>
+          <span className={`num text-[13px] font-medium ${quotaSignalClass(value)}`}>
+            {pct}%
+          </span>
+        </div>
+      </div>
+      <QuotaSegBar value={value} />
+    </div>
+  );
+}
+
+interface MiniStatProps {
+  eyebrow: string;
+  value: string;
+  suffix: string;
+  subline: React.ReactNode;
+  foot: { label: string; value: string }[];
+}
+function MiniStatCard({ eyebrow, value, suffix, subline, foot }: MiniStatProps) {
+  return (
+    <section className="mc-card col-span-3">
+      <header className="mb-1">
+        <span className="mc-eyebrow">{eyebrow}</span>
+      </header>
+      <div className="mt-3 flex items-baseline gap-2">
+        <span className="num text-[36px] font-medium leading-none tracking-[-0.02em] text-azure">
+          {value}
+        </span>
+        <span className="text-[12px] text-text-secondary">{suffix}</span>
+      </div>
+      <div className="text-[11px] text-text-tertiary mt-1.5">{subline}</div>
+      <div className="mt-3.5 pt-3 border-t border-hairline flex gap-3.5 text-[11px] text-text-tertiary">
+        {foot.map((f) => (
+          <span key={f.label}>
+            <strong className="num text-text-secondary font-semibold mr-1">
+              {f.value}
+            </strong>
+            {f.label}
+          </span>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+interface LegendProps {
+  swatch: string;
+  label: string;
+  shape?: "square" | "line";
+}
+function Legend({ swatch, label, shape = "square" }: LegendProps) {
+  return (
+    <span className="flex items-center gap-1.5">
+      {shape === "square" ? (
+        <span
+          className="w-2 h-2 rounded-[2px]"
+          style={{ background: swatch }}
+        />
+      ) : (
+        <span
+          className="w-3.5 h-[1.5px] mt-px"
+          style={{ background: swatch }}
+        />
+      )}
+      {label}
+    </span>
+  );
+}
+
+// KpiCard import 사용처 없는 경우 빈 wrapper 임포트로 만들지 않게 leave-out:
+// (실제로 KpiCard 는 future use 를 위해 export 만 됨.)
+export const __kpi_card_in_use = KpiCard;

@@ -202,21 +202,25 @@ export interface CompanyLeaderboardEntry {
 export type LeaderboardRange = "today" | "week" | "month";
 
 // RPC get_top_users 의 WHERE 절: `date >= current_date - (range_days || ' days')::interval`.
-// "오늘만" 을 원하면 range_days=0 (date >= today). 7일치 = 6 (오늘 포함 6일 전부터).
-// 1/7/30 을 그대로 보내면 N+1 일치가 합산되어 리더보드가 부풀려 보임 (대시보드 88M vs
-// 리더보드 1007M 처럼 어제 분량까지 더해진 케이스).
-const RANGE_DAYS: Record<LeaderboardRange, number> = {
-  today: 0,
-  week: 6,
-  month: 29,
-};
+// 단순히 rolling N 일이 아니라 대시보드 카드와 같은 calendar 의미로 매핑한다.
+//   today      → 0 (today 만)
+//   this-week  → 오늘 요일까지 (오늘이 월요일이면 0, 화 1, 금 4, 일 6)
+//                = 이번 주 월요일부터의 일수. friday cap 은 미래 일자 없으니 자동 만족.
+//   this-month → 오늘 - 이번 달 1일까지의 일수 (5/11 이면 10)
+function rangeToDays(range: LeaderboardRange, today: Date = new Date()): number {
+  if (range === "today") return 0;
+  if (range === "week") return (today.getDay() + 6) % 7; // Mon=0..Sun=6
+  return today.getDate() - 1; // month-to-date
+}
 
 export function useCompanyLeaderboard(range: LeaderboardRange = "week") {
+  const days = rangeToDays(range);
   return useQuery<CompanyLeaderboardEntry[], Error>({
-    queryKey: ["company_leaderboard", range],
+    // days 를 key 에 포함 → 자정 지나 의미 바뀌면 (예: 주중 → 다음 주 월요일) 자동 새 fetch.
+    queryKey: ["company_leaderboard", range, days],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_top_users", {
-        range_days: RANGE_DAYS[range],
+        range_days: days,
         max_rows: 50,
       });
       if (error) {

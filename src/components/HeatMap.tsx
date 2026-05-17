@@ -6,103 +6,142 @@ interface Props {
   weeks?: number;
 }
 
-const DAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
+const DAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"] as const;
 
-function getColor(count: number, max: number): string {
-  if (count === 0) return "bg-cloud border border-hairline";
+/// 5단계 azure 램프 + 오늘 셀은 violet 강조.
+function levelClass(count: number, max: number): string {
+  if (count === 0) return "bg-surface-2";
   const ratio = count / max;
-  if (ratio < 0.2) return "bg-primary/15";
-  if (ratio < 0.4) return "bg-primary/35";
-  if (ratio < 0.6) return "bg-primary/55";
-  if (ratio < 0.8) return "bg-primary/75";
-  return "bg-primary";
+  if (ratio < 0.2) return "bg-azure-deep opacity-55";
+  if (ratio < 0.4) return "bg-azure-deep";
+  if (ratio < 0.7) return "bg-azure";
+  return "bg-azure-bright shadow-[0_0_6px_rgba(123,188,255,0.35)]";
 }
 
-// Group days into weeks (column = week, row = weekday Mon-Sun).
-// Pads the head so that the first column starts on Monday of that week.
-function buildGrid(data: DayCount[]) {
-  if (data.length === 0) return { columns: [], months: [] as { col: number; label: string }[] };
+/// 7행(요일) × N열(주) 매트릭스. 첫 컬럼 시작이 월요일이 되도록 head padding.
+function buildMatrix(data: DayCount[], weeks: number) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayKey = localKey(today);
+
+  // 가장 최근 일요일 기준으로 끝을 맞추되, weeks 만큼 거꾸로 채운다.
+  // 단순하게: data 의 sorted 끝에서 weeks*7 개를 잘라 사용. 부족하면 head padding.
   const sorted = [...data].sort((a, b) => a.date.localeCompare(b.date));
-  const first = new Date(sorted[0].date);
-  const firstDow = (first.getDay() + 6) % 7; // Monday=0..Sunday=6
-  const padded: (DayCount | null)[] = Array(firstDow).fill(null).concat(sorted);
-  const columns: (DayCount | null)[][] = [];
-  const months: { col: number; label: string }[] = [];
-  let lastMonth = -1;
-  for (let i = 0; i < padded.length; i += 7) {
-    const col = padded.slice(i, i + 7);
-    while (col.length < 7) col.push(null);
-    columns.push(col);
-    const firstReal = col.find((c) => c !== null);
-    if (firstReal) {
-      const m = new Date(firstReal.date).getMonth();
-      if (m !== lastMonth) {
-        months.push({ col: columns.length - 1, label: `${m + 1}월` });
-        lastMonth = m;
-      }
-    }
+  const totalCells = weeks * 7;
+  const slice = sorted.slice(-totalCells);
+
+  // 시작 요일에 맞춰 앞쪽 padding (월요일 시작).
+  let headPad = 0;
+  if (slice.length > 0) {
+    const first = new Date(slice[0].date + "T00:00:00");
+    headPad = (first.getDay() + 6) % 7; // Mon=0
   }
-  return { columns, months };
+  const padded: (DayCount | null)[] = Array(headPad).fill(null).concat(slice);
+  while (padded.length < totalCells + headPad) padded.push(null);
+
+  // 7×N 매트릭스: rows[day][week]
+  const rows: (DayCount | null)[][] = Array.from({ length: 7 }, () => []);
+  for (let i = 0; i < padded.length; i++) {
+    const day = i % 7;
+    rows[day].push(padded[i]);
+  }
+  // 모든 행 길이 통일
+  const maxLen = Math.max(...rows.map((r) => r.length));
+  for (const r of rows) while (r.length < maxLen) r.push(null);
+
+  return { rows, todayKey };
+}
+
+function localKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 export function HeatMap({ data, weeks = 8 }: Props) {
-  const slice = data.slice(-weeks * 7);
-  const { columns, months } = buildGrid(slice);
-  const max = Math.max(...slice.map((d) => d.count), 1);
+  const { rows, todayKey } = buildMatrix(data, weeks);
+  const max = Math.max(...data.map((d) => d.count), 1);
+
+  // Week column labels = 첫 셀의 날짜의 day-of-month.
+  const weekLabels: string[] = [];
+  if (rows[0].length > 0) {
+    for (let w = 0; w < rows[0].length; w++) {
+      // 그 주의 첫 non-null 셀의 날짜를 사용
+      let label = "";
+      for (let d = 0; d < 7; d++) {
+        const cell = rows[d][w];
+        if (cell) {
+          label = String(new Date(cell.date + "T00:00:00").getDate());
+          break;
+        }
+      }
+      weekLabels.push(label);
+    }
+  }
 
   return (
-    <div className="flex flex-col gap-1.5">
-      {/* Month headers */}
-      <div className="grid pl-7" style={{ gridTemplateColumns: `repeat(${columns.length}, 14px)`, gap: 4 }}>
-        {Array.from({ length: columns.length }).map((_, ci) => {
-          const m = months.find((mm) => mm.col === ci);
-          return (
-            <span key={ci} className="text-[10px] uppercase tracking-[0.12em] font-bold text-graphite text-left whitespace-nowrap">
-              {m?.label ?? ""}
-            </span>
-          );
-        })}
-      </div>
-
-      {/* Grid: day labels column + week columns */}
-      <div className="flex gap-1">
-        {/* Day labels (Mon, Wed, Fri visible) */}
-        <div className="flex flex-col gap-1 pr-1">
-          {DAY_LABELS.map((label, i) => (
-            <span
-              key={label}
-              className="h-[14px] text-[10px] text-graphite leading-[14px]"
-              style={{ visibility: i % 2 === 0 ? "visible" : "hidden" }}
-            >
-              {label}
-            </span>
-          ))}
-        </div>
-
-        {/* Week columns */}
-        <div className="flex gap-1">
-          {columns.map((col, ci) => (
-            <div key={ci} className="flex flex-col gap-1">
-              {col.map((day, ri) =>
-                day ? (
-                  <div key={ri} className="relative group">
-                    <div
-                      className={`w-[14px] h-[14px] rounded-[3px] ${getColor(day.count, max)}`}
-                    />
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-10 pointer-events-none">
-                      <div className="bg-canvas text-ink text-[11px] rounded-md px-2 py-1 whitespace-nowrap shadow-md border border-hairline">
-                        <div className="font-medium">{day.date}</div>
-                        <div className="text-graphite">{day.count}건 · {formatUSD(day.cost_usd)}</div>
-                      </div>
+    <div className="flex flex-col gap-1">
+      {/* 7 day-rows */}
+      {rows.map((row, di) => (
+        <div key={di} className="flex gap-1 items-center">
+          <span className="w-[22px] text-right text-[10px] text-text-faint shrink-0">
+            {di % 2 === 0 ? DAY_LABELS[di] : ""}
+          </span>
+          {row.map((cell, wi) => {
+            const isToday = cell?.date === todayKey;
+            return cell ? (
+              <div key={wi} className="relative group">
+                <div
+                  className={`w-4 h-4 rounded-[4px] border border-[rgba(255,255,255,0.02)] ${
+                    isToday
+                      ? "bg-violet shadow-[0_0_8px_rgba(182,140,255,0.45)]"
+                      : levelClass(cell.count, max)
+                  }`}
+                />
+                <div className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1 z-10 pointer-events-none">
+                  <div className="bg-surface-2 border border-hairline-strong rounded-md px-2 py-1 text-[11px] whitespace-nowrap shadow-lg">
+                    <div className="num font-medium text-text-primary">{cell.date}</div>
+                    <div className="text-text-tertiary num">
+                      {cell.count}건 · {formatUSD(cell.cost_usd)}
                     </div>
                   </div>
-                ) : (
-                  <div key={ri} className="w-[14px] h-[14px]" />
-                )
-              )}
-            </div>
-          ))}
+                </div>
+              </div>
+            ) : (
+              <div key={wi} className="w-4 h-4" />
+            );
+          })}
         </div>
+      ))}
+
+      {/* Week labels (day-of-month) */}
+      <div className="flex gap-1 mt-1.5 ml-[26px]">
+        {weekLabels.map((l, i) => (
+          <span
+            key={i}
+            className="w-4 text-center num text-[9.5px] text-text-faint"
+          >
+            {l}
+          </span>
+        ))}
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-1.5 mt-3 text-[10.5px] text-text-tertiary">
+        <span>Less</span>
+        <div className="flex gap-[3px]">
+          <span className="w-[11px] h-[11px] rounded-[3px] bg-surface-2" />
+          <span className="w-[11px] h-[11px] rounded-[3px] bg-azure-deep opacity-55" />
+          <span className="w-[11px] h-[11px] rounded-[3px] bg-azure-deep" />
+          <span className="w-[11px] h-[11px] rounded-[3px] bg-azure" />
+          <span className="w-[11px] h-[11px] rounded-[3px] bg-azure-bright" />
+        </div>
+        <span>More</span>
+        <span className="ml-auto inline-flex items-center gap-1.5">
+          <span className="w-[11px] h-[11px] rounded-[3px] bg-violet shadow-[0_0_6px_rgba(182,140,255,0.45)]" />
+          오늘
+        </span>
       </div>
     </div>
   );

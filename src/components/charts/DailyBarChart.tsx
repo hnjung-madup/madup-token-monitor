@@ -1,54 +1,220 @@
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
-import type { Point } from "@/types/models";
-import { formatTokens } from "@/lib/format";
-import { useTranslation } from "react-i18next";
-import { tokens } from "@/lib/tokens";
+import { useMemo } from "react";
+import { formatTokensCompact, formatUSD } from "@/lib/format";
 
-interface Props {
-  data: Point[];
+interface DailyBarRow {
+  date: string;
+  tokens: number;
+  cost: number;
 }
 
-export function DailyBarChart({ data }: Props) {
-  const { t } = useTranslation();
-  const chartData = data.map((d) => ({
-    date: new Date(d.ts).toLocaleDateString("ko-KR", { month: "short", day: "numeric" }),
-    [t("dashboard.legend.input")]: d.input_tokens,
-    [t("dashboard.legend.output")]: d.output_tokens,
-  }));
+interface Props {
+  data: DailyBarRow[];
+  /// 마지막 row 가 "오늘" 인지 여부. true 면 violet 강조.
+  highlightLast?: boolean;
+  metric?: "tokens" | "cost";
+  /// 평균 라인 표시. 미지정 시 자동 계산 (data 의 평균).
+  avg?: number | null;
+}
+
+const CHART_W = 720;
+const CHART_H = 280;
+const Y_AXIS_W = 50;
+const PAD_TOP = 16;
+const PAD_BOT = 28;
+const BAR_GAP = 10;
+
+/// 막대 차트 — azure 그라데이션 (이전 기간) + violet 그라데이션 (오늘 / 마지막) + amber dashed 평균 라인.
+/// y 축 4 단계 + x 축 라벨, 막대 위 값 노출. responsive 하게 viewBox 확대 / 축소.
+export function DailyBarChart({
+  data,
+  highlightLast = true,
+  metric = "tokens",
+  avg = null,
+}: Props) {
+  const rows = data;
+  const hasData = rows.length > 0;
+
+  const { values, maxVal, ticks, computedAvg } = useMemo(() => {
+    const vals = rows.map((r) => (metric === "tokens" ? r.tokens : r.cost));
+    const max = Math.max(...vals, 1);
+    // y axis: 4 ticks, rounded up to nearest "nice" number
+    const tick = niceTickStep(max / 4);
+    const top = Math.ceil(max / tick) * tick;
+    const ts = [top, top * 0.75, top * 0.5, top * 0.25];
+    const sum = vals.reduce((a, b) => a + b, 0);
+    const computed = vals.length > 0 ? sum / vals.length : 0;
+    return { values: vals, maxVal: top, ticks: ts, computedAvg: computed };
+  }, [rows, metric]);
+
+  if (!hasData) {
+    return (
+      <div className="h-[280px] grid place-items-center text-text-tertiary text-[12px]">
+        기록 없음
+      </div>
+    );
+  }
+
+  const innerW = CHART_W - Y_AXIS_W;
+  const innerH = CHART_H - PAD_TOP - PAD_BOT;
+  const colW = innerW / rows.length;
+  const barW = Math.max(20, colW - BAR_GAP);
+
+  const avgValue = avg ?? computedAvg;
+  const avgY = PAD_TOP + innerH - (avgValue / maxVal) * innerH;
+
+  const fmt = metric === "tokens" ? formatTokensCompact : (n: number) => formatUSD(n);
 
   return (
-    <ResponsiveContainer width="100%" height={260}>
-      <BarChart data={chartData} margin={{ top: 20, right: 12, left: 4, bottom: 4 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke={tokens.hairline} />
-        <XAxis dataKey="date" tick={{ fontSize: 11, fill: tokens.graphite }} />
-        <YAxis
-          tickFormatter={(v: number) => formatTokens(v)}
-          tick={{ fontSize: 11, fill: tokens.graphite }}
-          width={60}
-        />
-        <Tooltip
-          contentStyle={{
-            borderRadius: 8,
-            border: `1px solid ${tokens.hairline}`,
-            background: tokens.canvas,
-            color: tokens.ink,
-            fontSize: 12,
-          }}
-          formatter={(v) => formatTokens(Number(v))}
-        />
-        <Legend wrapperStyle={{ fontSize: 12, color: tokens.charcoal }} />
-        <Bar dataKey={t("dashboard.legend.input")} stackId="a" fill={tokens.primary} radius={[0, 0, 0, 0]} />
-        <Bar dataKey={t("dashboard.legend.output")} stackId="a" fill={tokens.primaryDeep} radius={[3, 3, 0, 0]} />
-      </BarChart>
-    </ResponsiveContainer>
+    <svg
+      width="100%"
+      height={CHART_H}
+      viewBox={`0 0 ${CHART_W} ${CHART_H}`}
+      preserveAspectRatio="xMidYMid meet"
+      style={{ display: "block" }}
+    >
+      <defs>
+        <linearGradient id="barGradAzure" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="#7BBCFF" />
+          <stop offset="100%" stopColor="#2C7BE5" />
+        </linearGradient>
+        <linearGradient id="barGradToday" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="#B68CFF" />
+          <stop offset="100%" stopColor="#8358D9" />
+        </linearGradient>
+      </defs>
+
+      {/* horizontal gridlines */}
+      <g stroke="rgba(255,255,255,0.05)" strokeWidth={1}>
+        {ticks.map((_, i) => {
+          const y = PAD_TOP + (innerH * (i + 1)) / 5;
+          return (
+            <line key={i} x1={Y_AXIS_W} y1={y} x2={CHART_W} y2={y} />
+          );
+        })}
+      </g>
+
+      {/* y-axis labels */}
+      <g fill="#454E6A" fontSize="10" fontFamily="JetBrains Mono, monospace">
+        {ticks.map((t, i) => {
+          const y = PAD_TOP + (innerH * (i + 1)) / 5;
+          return (
+            <text key={i} x={Y_AXIS_W - 6} y={y + 3} textAnchor="end">
+              {fmt(t)}
+            </text>
+          );
+        })}
+      </g>
+
+      {/* bars */}
+      <g>
+        {rows.map((r, i) => {
+          const v = values[i];
+          const isToday = highlightLast && i === rows.length - 1;
+          const h = (v / maxVal) * innerH;
+          const x = Y_AXIS_W + i * colW + (colW - barW) / 2;
+          const y = PAD_TOP + innerH - h;
+          const fillId = isToday ? "barGradToday" : "barGradAzure";
+          return (
+            <g key={r.date}>
+              <rect
+                x={x}
+                y={y}
+                width={barW}
+                height={Math.max(2, h)}
+                rx={6}
+                fill={`url(#${fillId})`}
+                opacity={isToday ? 1 : 0.92}
+              />
+              {h > 18 && (
+                <text
+                  x={x + barW / 2}
+                  y={y - 6}
+                  textAnchor="middle"
+                  fontSize="10"
+                  fontFamily="JetBrains Mono, monospace"
+                  fill={isToday ? "#B68CFF" : "#9CA8C5"}
+                  fontWeight={isToday ? 600 : 400}
+                >
+                  {fmt(v)}
+                </text>
+              )}
+            </g>
+          );
+        })}
+      </g>
+
+      {/* baseline */}
+      <line
+        x1={Y_AXIS_W}
+        y1={PAD_TOP + innerH}
+        x2={CHART_W}
+        y2={PAD_TOP + innerH}
+        stroke="rgba(255,255,255,0.12)"
+        strokeWidth={1}
+      />
+
+      {/* x-axis labels */}
+      <g fill="#6A7593" fontSize="10.5" fontFamily="JetBrains Mono, monospace">
+        {rows.map((r, i) => {
+          const x = Y_AXIS_W + i * colW + colW / 2;
+          const isToday = highlightLast && i === rows.length - 1;
+          return (
+            <text
+              key={r.date}
+              x={x}
+              y={CHART_H - 8}
+              textAnchor="middle"
+              fill={isToday ? "#B68CFF" : "#6A7593"}
+              fontWeight={isToday ? 600 : 400}
+              fontFamily={isToday ? "Pretendard, sans-serif" : "JetBrains Mono, monospace"}
+            >
+              {isToday ? "오늘" : r.date}
+            </text>
+          );
+        })}
+      </g>
+
+      {/* avg dashed line */}
+      {avgValue > 0 && (
+        <g>
+          <line
+            x1={Y_AXIS_W}
+            y1={avgY}
+            x2={CHART_W}
+            y2={avgY}
+            stroke="#F5B544"
+            strokeWidth={1.2}
+            strokeDasharray="4 4"
+            opacity={0.7}
+          />
+          <text
+            x={CHART_W - 4}
+            y={avgY - 5}
+            textAnchor="end"
+            fontSize="9.5"
+            fill="#F5B544"
+            fontFamily="Pretendard, sans-serif"
+            fontWeight={500}
+          >
+            평균 · {fmt(avgValue)}
+          </text>
+        </g>
+      )}
+    </svg>
   );
+}
+
+function niceTickStep(roughStep: number): number {
+  if (roughStep <= 0) return 1;
+  const exp = Math.floor(Math.log10(roughStep));
+  const base = Math.pow(10, exp);
+  const m = roughStep / base;
+  // 1, 2, 2.5, 5, 10
+  let nice;
+  if (m < 1.5) nice = 1;
+  else if (m < 2.25) nice = 2;
+  else if (m < 3.5) nice = 2.5;
+  else if (m < 7.5) nice = 5;
+  else nice = 10;
+  return nice * base;
 }

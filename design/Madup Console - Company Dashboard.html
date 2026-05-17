@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1440" />
+<title>매드업 토큰 모니터 — 사내 대시보드</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" />
+<link rel="stylesheet" href="theme.css" />
+<style>
+  /* MADUP CONSOLE — tokens */
+  :root {
+    --canvas-deep: #070B17; --canvas: #0B1126; --canvas-soft: #11183A; --vignette: #1A2350;
+    --surface-1: #121A33; --surface-2: #19233F; --surface-3: #22304D;
+    --hairline: rgba(255,255,255,0.06); --hairline-strong: rgba(255,255,255,0.12); --inner-highlight: rgba(255,255,255,0.05);
+    --text-primary: #E7ECF7; --text-secondary: #9CA8C5; --text-tertiary: #6A7593; --text-faint: #454E6A; --text-on-accent: #06122B;
+    --azure: #4DA3FF; --azure-bright: #7BBCFF; --azure-deep: #2C7BE5; --azure-soft: rgba(77,163,255,0.14);
+    --lime: #9BE15D; --lime-deep: #6CB23B; --lime-soft: rgba(155,225,93,0.14);
+    --amber: #F5B544; --amber-deep: #C88A1C; --amber-soft: rgba(245,181,68,0.14);
+    --coral: #FF6B5C; --coral-deep: #D43F2E; --coral-soft: rgba(255,107,92,0.14);
+    --violet: #B68CFF; --violet-deep: #8358D9; --violet-soft: rgba(182,140,255,0.14);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--canvas-deep); color: var(--text-primary);
+    font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, "Helvetica Neue", "Noto Sans KR", sans-serif;
+    font-size: 13px; line-height: 1.45;
+    -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility;
+    overflow: hidden;
+  }
+  .num { font-family: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-feature-settings: "tnum", "zero"; font-variant-numeric: tabular-nums; }
+
+  /* Shell */
+  .stage { width:100vw; height:100vh; display:flex; align-items:center; justify-content:center;
+    background: radial-gradient(ellipse at top left, #1a1f3a 0%, #050810 70%); padding: 24px; }
+  .window { width: 1392px; height: 852px; border-radius: 20px;
+    background: radial-gradient(ellipse 900px 600px at -10% -20%, rgba(26,35,80,0.55) 0%, transparent 60%),
+                radial-gradient(ellipse 700px 400px at 110% 110%, rgba(60,40,110,0.2) 0%, transparent 60%),
+                linear-gradient(180deg, var(--canvas-soft) 0%, var(--canvas) 35%, var(--canvas) 100%);
+    border: 1px solid var(--hairline-strong); overflow: hidden; display: grid; grid-template-rows: 36px 1fr;
+    box-shadow: 0 30px 90px rgba(0,0,0,0.6), 0 8px 30px rgba(0,0,0,0.4); }
+
+  /* Title bar */
+  .titlebar { display:grid; grid-template-columns: 1fr auto 1fr; align-items:center; padding: 0 16px;
+    border-bottom: 1px solid var(--hairline); }
+  .traffic { display:flex; gap:8px; align-items:center; }
+  .light { width:12px; height:12px; border-radius:50%; display:inline-block; }
+  .light.r { background:#ff5f57; } .light.y { background:#febc2e; } .light.g { background:#28c840; }
+  .titlebar-center { font-size:12px; color:var(--text-secondary); display:flex; align-items:center; gap:8px; white-space:nowrap; }
+  .titlebar-center span { white-space:nowrap; flex-shrink:0; }
+  .titlebar-center .dot { width:4px; height:4px; background:var(--text-faint); border-radius:50%; }
+  .titlebar-right { display:flex; justify-content:flex-end; gap:8px; align-items:center; }
+  .status-pill { display:inline-flex; align-items:center; gap:6px; height:22px; padding:0 10px; border-radius:9999px;
+    background: var(--lime-soft); color: var(--lime); font-size:11px; font-weight:500; white-space:nowrap; flex-shrink:0; }
+  .status-pill .live-dot { width:6px; height:6px; border-radius:50%; background:var(--lime); box-shadow: 0 0 8px var(--lime);
+    animation: livepulse 1.6s ease-in-out infinite; }
+  @keyframes livepulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.85); } }
+
+  /* Body */
+  .body { display:grid; grid-template-columns: 224px 1fr; min-height: 0; }
+
+  /* Sidebar */
+  .sidebar { background: rgba(7,11,23,0.55); border-right: 1px solid var(--hairline);
+    padding: 20px 12px; display:flex; flex-direction:column; gap:20px; }
+  .brand { display:flex; align-items:center; gap:10px; padding: 4px 8px 8px; }
+  .brand-mark { width:28px; height:28px; border-radius:8px;
+    background: linear-gradient(135deg, var(--azure-bright) 0%, var(--azure-deep) 100%);
+    display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:13px; letter-spacing:-0.03em;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 14px rgba(77,163,255,0.35); }
+  .brand-text { display:flex; flex-direction:column; line-height:1.1; }
+  .brand-text .word { font-weight:700; font-size:13px; color:var(--text-primary); letter-spacing:0.04em; }
+  .brand-text .sub { font-size:10px; color:var(--text-tertiary); letter-spacing:0.18em; text-transform:uppercase; margin-top:2px; }
+  .nav { display:flex; flex-direction:column; gap:2px; }
+  .nav-eyebrow { font-size:10.5px; font-weight:700; letter-spacing:0.16em; text-transform:uppercase; color:var(--text-faint);
+    padding: 4px 12px 8px; white-space: nowrap; }
+  .nav-item { display:flex; align-items:center; gap:10px; height:36px; padding:0 12px; border-radius:8px;
+    color:var(--text-secondary); font-size:13px; font-weight:500; cursor:pointer; user-select:none;
+    white-space:nowrap; text-decoration: none; }
+  .nav-item > span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .nav-item .icn { width:16px; height:16px; color:var(--text-tertiary); flex-shrink:0; }
+  .nav-item.active { background: var(--azure-soft); color: var(--azure-bright); }
+  .nav-item.active .icn { color: var(--azure); }
+  .nav-item .badge { margin-left:auto; font-size:10px; font-weight:600; padding:1px 6px; border-radius:9999px;
+    background:var(--surface-3); color:var(--text-secondary); }
+  .sidebar-spacer { flex:1; }
+  .sidebar-divider { height:1px; background:var(--hairline); margin: 0 4px; }
+  .user-block { display:grid; grid-template-columns: 32px 1fr auto; gap:10px; align-items:center;
+    padding:8px; border-radius:10px; background:var(--surface-1); border:1px solid var(--hairline); }
+  .avatar { width:32px; height:32px; border-radius:50%; background: linear-gradient(135deg, #4da3ff 0%, #b68cff 100%);
+    display:flex; align-items:center; justify-content:center; color:#06122b; font-weight:700; font-size:12px; }
+  .user-meta { min-width: 0; }
+  .user-name { font-size:12px; font-weight:600; color:var(--text-primary); line-height:1.1; }
+  .user-mail { font-size:11px; color:var(--text-tertiary); line-height:1.1; margin-top:2px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .icon-btn { width:26px; height:26px; border:0; background:transparent; color:var(--text-tertiary);
+    border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .icon-btn:hover { background:var(--surface-2); color:var(--text-secondary); }
+
+  /* Content */
+  .content { overflow:auto; padding: 24px 28px 32px; }
+  .content-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; gap:16px; }
+  .content-head > div:first-child { min-width: 0; }
+  .page-title { font-size:22px; font-weight:700; letter-spacing:-0.01em; color:var(--text-primary); }
+  .page-sub { font-size:12px; color:var(--text-tertiary); margin-top:4px; white-space: nowrap; }
+  .page-actions { display:flex; gap:8px; align-items:center; flex-shrink:0; }
+
+  /* Buttons / Selects */
+  .btn { display:inline-flex; align-items:center; gap:8px; height:34px; padding:0 14px; border-radius:8px;
+    border:0; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer;
+    white-space:nowrap; flex-shrink:0; }
+  .btn-primary { background:var(--azure); color:var(--text-on-accent); }
+  .btn-primary:hover { background:var(--azure-bright); }
+  .btn-outline { background:transparent; color:var(--text-primary); border:1px solid var(--hairline-strong); }
+  .btn-outline:hover { border-color:var(--text-tertiary); }
+  .btn-ghost { background:transparent; color:var(--text-secondary); }
+  .btn-ghost:hover { color:var(--text-primary); background:var(--surface-2); }
+  .head-btn { display:inline-flex; align-items:center; justify-content:center; height:28px; padding:0 10px;
+    border-radius:6px; background:var(--surface-2); border:1px solid var(--hairline); color:var(--text-secondary);
+    font-size:11.5px; font-weight:500; cursor:pointer; gap:6px; white-space:nowrap; flex-shrink:0; }
+  .head-btn:hover { color:var(--text-primary); border-color:var(--hairline-strong); }
+  .select { display:inline-flex; align-items:center; gap:6px; height:30px; padding:0 12px; border-radius:8px;
+    background:var(--surface-2); border:1px solid var(--hairline); color:var(--text-primary); font-size:12px; font-weight:500;
+    white-space:nowrap; flex-shrink:0; }
+  .select .caret { width:8px; height:8px; border-right:1.5px solid var(--text-tertiary);
+    border-bottom:1.5px solid var(--text-tertiary); transform:rotate(45deg); margin-left:2px; margin-bottom:2px; }
+  .segmented { display:inline-flex; background:var(--surface-2); border-radius:8px; padding:2px;
+    border:1px solid var(--hairline); height:30px; flex-shrink:0; }
+  .segmented button { border:0; background:transparent; color:var(--text-secondary);
+    font-family:inherit; font-size:12px; font-weight:600; padding:0 12px; border-radius:6px; cursor:pointer; white-space:nowrap; }
+  .segmented button.active { background:var(--azure); color:var(--text-on-accent); }
+
+  /* Grid + Card */
+  .grid { display:grid; grid-template-columns: repeat(12, 1fr); gap:16px; }
+  .col-12 { grid-column: span 12; } .col-8 { grid-column: span 8; } .col-7 { grid-column: span 7; }
+  .col-6 { grid-column: span 6; } .col-5 { grid-column: span 5; } .col-4 { grid-column: span 4; }
+  .col-3 { grid-column: span 3; }
+
+  .card { position:relative; background:var(--surface-1); border-radius:14px; padding:20px;
+    border:1px solid var(--hairline); overflow:hidden; }
+  .card::before { content:""; position:absolute; inset: 0 0 auto 0; height:60%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 100%); pointer-events:none; border-radius:14px 14px 0 0; }
+  .card-feature { border-radius:20px; padding:28px; } .card-feature::before { border-radius:20px 20px 0 0; }
+  .card-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; position:relative; gap:12px; }
+  .head-tools { display:flex; gap:6px; align-items:center; flex-shrink:0; }
+  .eyebrow { font-size:10.5px; font-weight:700; letter-spacing:0.16em; text-transform:uppercase;
+    color:var(--text-tertiary); white-space:nowrap; }
+  .card-title { font-size:15px; font-weight:600; color:var(--text-primary); letter-spacing:-0.005em; white-space:nowrap; }
+  .delta { display:inline-flex; align-items:center; gap:3px; height:20px; padding:0 7px; border-radius:6px;
+    font-size:11px; font-weight:500; font-family:"JetBrains Mono", monospace; font-variant-numeric:tabular-nums;
+    white-space:nowrap; flex-shrink:0; }
+  .delta.up { background:var(--lime-soft); color:var(--lime); }
+  .delta.down { background:var(--coral-soft); color:var(--coral); }
+
+  /* Hero KPI card */
+  .kpi { position:relative; }
+  .kpi-eyebrow { font-size:10.5px; font-weight:700; letter-spacing:0.16em; text-transform:uppercase;
+    color:var(--text-tertiary); margin-bottom:14px; white-space:nowrap; }
+  .kpi-numeral { display:flex; align-items:baseline; gap:8px; }
+  .kpi-numeral .big { font-size:48px; font-weight:500; line-height:1; letter-spacing:-0.02em; color:var(--azure); }
+  .kpi-numeral .big.amber { color:var(--amber); }
+  .kpi-numeral .big.lime { color:var(--lime); }
+  .kpi-numeral .big.violet { color:var(--violet); }
+  .kpi-numeral .big.coral { color:var(--coral); }
+  .kpi-numeral .suffix { font-size:13px; color:var(--text-secondary); font-weight:400; }
+  .kpi-context { display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+    font-size:11.5px; color:var(--text-secondary); margin-top:10px; }
+  .kpi-spark { position:absolute; right:0; bottom:0; opacity:0.85; }
+
+  /* Leaderboard table */
+  .lb-table { display:flex; flex-direction:column; }
+  .lb-row { display:grid; grid-template-columns: 28px 1fr 1fr 90px 70px; gap:12px;
+    align-items:center; padding: 10px 10px; border-radius: 8px; }
+  .lb-row.head { padding: 6px 10px; }
+  .lb-row.head .h { font-size:10px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:var(--text-faint); }
+  .lb-row + .lb-row { border-top: 1px solid var(--hairline); border-radius: 0; }
+  .lb-row.me { background: var(--azure-soft); border-color: transparent; }
+  .lb-row.me + .lb-row { border-top-color: transparent; }
+  .lb-rank { display:flex; align-items:center; justify-content:center; width:28px; height:28px;
+    border-radius:50%; background: var(--surface-2); color:var(--text-secondary);
+    font-family:"JetBrains Mono", monospace; font-size:12px; font-weight:600; }
+  .lb-rank.gold { background: linear-gradient(135deg, #f5d36b 0%, #d49b1b 100%); color:#3a2607; box-shadow: 0 0 12px rgba(245,181,68,0.4); }
+  .lb-rank.silver { background: linear-gradient(135deg, #cfd6e6 0%, #8593af 100%); color: #1b223a; }
+  .lb-rank.bronze { background: linear-gradient(135deg, #d99878 0%, #a26041 100%); color: #2a160a; }
+  .lb-user { display:flex; align-items:center; gap:10px; min-width:0; }
+  .lb-user .av { width:24px; height:24px; border-radius:50%; flex-shrink:0;
+    background:linear-gradient(135deg, var(--azure), var(--violet));
+    display:flex; align-items:center; justify-content:center; color:#06122b; font-weight:700; font-size:10px; }
+  .lb-user .nm { font-size:12.5px; color:var(--text-primary); font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .lb-user .mail { font-size:11px; color:var(--text-tertiary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .lb-user .me-tag { font-size:9.5px; font-weight:700; padding:2px 6px; border-radius:4px;
+    background:var(--azure); color:var(--text-on-accent); letter-spacing:0.05em; margin-left:6px; }
+  .lb-bar-cell { display:flex; align-items:center; gap:8px; }
+  .lb-bar { height:6px; flex:1; min-width:60px; background:var(--surface-3); border-radius:9999px; overflow:hidden; }
+  .lb-bar .fill { height:100%; background: linear-gradient(90deg, var(--azure-deep), var(--azure)); border-radius:9999px; }
+  .lb-tok { font-family:"JetBrains Mono", monospace; font-size:12.5px; color:var(--azure); font-weight:500; text-align:right; white-space:nowrap; }
+  .lb-usd { font-family:"JetBrains Mono", monospace; font-size:12px; color:var(--amber); font-weight:500; text-align:right; white-space:nowrap; }
+  .lb-foot { display:flex; justify-content:space-between; align-items:center; margin-top:14px; padding-top:12px;
+    border-top: 1px solid var(--hairline); font-size:11px; color:var(--text-tertiary); }
+  .lb-foot strong { color:var(--text-secondary); font-weight:600; }
+
+  /* Mini bar list */
+  .bar-list { display:flex; flex-direction:column; gap:14px; margin-top:6px; }
+  .bar-row .top { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; gap:8px; }
+  .bar-row .lbl { font-size:12px; color:var(--text-primary); font-weight:500; display:flex; align-items:center; gap:8px; min-width:0;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .bar-row .rank-glyph { width:20px; height:20px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; background:var(--surface-2);
+    font-family:"JetBrains Mono", monospace; font-size:10px; color:var(--text-tertiary); font-weight:600; }
+  .bar-row .val { font-family:"JetBrains Mono", monospace; font-size:12px; color:var(--azure);
+    font-weight:500; white-space:nowrap; flex-shrink:0; }
+  .bar-row .bar { height:5px; background:var(--surface-3); border-radius:9999px; overflow:hidden; }
+  .bar-row .bar .fill { height:100%; background: linear-gradient(90deg, var(--azure-deep), var(--azure)); border-radius:9999px; }
+  .bar-row.amber .val { color:var(--amber); }
+  .bar-row.amber .bar .fill { background: linear-gradient(90deg, var(--amber-deep), var(--amber)); }
+  .bar-row.lime .val { color:var(--lime); }
+  .bar-row.lime .bar .fill { background: linear-gradient(90deg, var(--lime-deep), var(--lime)); }
+  .bar-row.violet .val { color:var(--violet); }
+  .bar-row.violet .bar .fill { background: linear-gradient(90deg, var(--violet-deep), var(--violet)); }
+  .bar-row.coral .val { color:var(--coral); }
+  .bar-row.coral .bar .fill { background: linear-gradient(90deg, var(--coral-deep), var(--coral)); }
+
+  /* Trend chart well */
+  .chart-well { background: var(--surface-2); border-radius: 10px; padding: 14px;
+    border: 1px solid var(--hairline); margin-top: 10px; }
+  .chart-well svg { display:block; width:100%; height:auto; }
+  .chart-well text { font-family: "JetBrains Mono", monospace; }
+
+  /* Helpers */
+  .row { display:flex; align-items:center; gap:10px; }
+  .between { justify-content: space-between; }
+
+  /* ===== Sort / Filter additions ===== */
+  .lb-filter-bar {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 4px 0 12px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .lb-search {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface-2); border: 1px solid var(--hairline);
+    border-radius: 8px; height: 28px; padding: 0 10px;
+    color: var(--text-tertiary); font-size: 12px;
+    flex: 0 1 220px; min-width: 0; margin-left: auto;
+  }
+  .lb-search input {
+    background: transparent; border: 0; outline: 0;
+    font-family: inherit; font-size: 12px; color: var(--text-primary);
+    flex: 1; min-width: 0;
+  }
+  .lb-search input::placeholder { color: var(--text-faint); }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 26px; padding: 0 10px; border-radius: 9999px;
+    background: var(--surface-2); border: 1px solid var(--hairline);
+    color: var(--text-secondary); font-size: 11.5px; font-weight: 500;
+    cursor: pointer; white-space: nowrap;
+  }
+  .chip:hover { color: var(--text-primary); border-color: var(--hairline-strong); }
+  .chip.active { background: var(--azure-soft); color: var(--azure-bright); border-color: rgba(77,163,255,0.4); }
+  .chip .ct { color: var(--text-tertiary); font-family: "JetBrains Mono", monospace; font-size: 10.5px; }
+  .chip.active .ct { color: var(--azure-bright); }
+  .lb-row.head .h {
+    cursor: pointer; user-select: none;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .lb-row.head .h:hover { color: var(--text-secondary); }
+  .lb-row.head .h.active { color: var(--azure-bright); }
+  .lb-row.head .h.right { justify-content: flex-end; }
+  .sort-arrow {
+    display: inline-block; opacity: 0;
+    width: 0; height: 0;
+    border-left: 3.5px solid transparent;
+    border-right: 3.5px solid transparent;
+    border-top: 4.5px solid currentColor;
+    transition: transform 140ms ease, opacity 140ms ease;
+    margin-left: 2px;
+  }
+  .lb-row.head .h.active .sort-arrow { opacity: 1; }
+  .lb-row.head .h.active.asc .sort-arrow { transform: rotate(180deg); }
+  .lb-empty {
+    padding: 32px 16px; text-align: center;
+    color: var(--text-tertiary); font-size: 12.5px;
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+<div class="window">
+
+  <!-- Title bar -->
+  <div class="titlebar">
+    <div class="traffic">
+      <span class="light r"></span><span class="light y"></span><span class="light g"></span>
+    </div>
+    <div class="titlebar-center">
+      <span>매드업 토큰 모니터</span><span class="dot"></span><span>사내 대시보드</span>
+    </div>
+    <div class="titlebar-right">
+      <span class="status-pill"><span class="live-dot"></span><span>실시간 동기화 중</span></span>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="body">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">M</div>
+        <div class="brand-text"><span class="word">MADUP</span><span class="sub">Token Console</span></div>
+      </div>
+      <nav class="nav">
+        <div class="nav-eyebrow">Personal</div>
+        <a class="nav-item" href="Madup Console — Dashboard.html">
+          <svg class="icn" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="2" y="2" width="5" height="6" rx="1.2"/><rect x="9" y="2" width="5" height="4" rx="1.2"/>
+            <rect x="2" y="10" width="5" height="4" rx="1.2"/><rect x="9" y="8" width="5" height="6" rx="1.2"/>
+          </svg>
+          <span>내 대시보드</span>
+        </a>
+        <div class="nav-eyebrow" style="margin-top:14px;">Team</div>
+        <a class="nav-item active" href="Madup Console — Company Dashboard.html">
+          <svg class="icn" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M2 14V9a2 2 0 012-2h2a2 2 0 012 2v5"/>
+            <path d="M8 14V6a2 2 0 012-2h2a2 2 0 012 2v8"/>
+            <path d="M1 14h14"/>
+          </svg>
+          <span>사내 대시보드</span>
+        </a>
+        <a class="nav-item" href="#">
+          <svg class="icn" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M2 4a1 1 0 011-1h10a1 1 0 011 1v6a1 1 0 01-1 1H8l-3 3v-3H3a1 1 0 01-1-1V4z"/>
+          </svg>
+          <span>팀 채팅</span><span class="badge">3</span>
+        </a>
+      </nav>
+      <div class="sidebar-spacer"></div>
+      <div class="sidebar-divider"></div>
+      <div class="user-block">
+        <div class="avatar">HJ</div>
+        <div class="user-meta">
+          <div class="user-name">정현조</div>
+          <div class="user-mail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="c3abada9b6ada483aea2a7b6b3eda0acae">[email&#160;protected]</a></div>
+        </div>
+        <div style="display:flex; gap:2px;">
+          <button class="theme-toggle icon-btn" aria-label="테마 전환">
+            <svg class="moon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M13 9A5 5 0 017 3a1 1 0 00-1.3-1A6.5 6.5 0 1014 10.3 1 1 0 0013 9z"/>
+            </svg>
+            <svg class="sun" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+              <circle cx="8" cy="8" r="3"/>
+              <path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.2 3.2l1 1M11.8 11.8l1 1M3.2 12.8l1-1M11.8 4.2l1-1"/>
+            </svg>
+          </button>
+          <button class="icon-btn" aria-label="설정">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
+              <circle cx="8" cy="8" r="2"/>
+              <path d="M8 1v2M8 13v2M3.5 3.5l1.4 1.4M11.1 11.1l1.4 1.4M1 8h2M13 8h2M3.5 12.5l1.4-1.4M11.1 4.9l1.4-1.4"/>
+            </svg>
+          </button>
+          <button class="icon-btn" aria-label="로그아웃">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 3H3v10h3M10 5l3 3-3 3M13 8H6"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Content -->
+    <main class="content">
+
+      <!-- Head -->
+      <div class="content-head">
+        <div>
+          <div class="page-title">사내 대시보드</div>
+          <div class="page-sub">매드업 전사 토큰·MCP·플러그인 집계 · 16명 중 10명 옵트인</div>
+        </div>
+        <div class="page-actions">
+          <div class="segmented">
+            <button>오늘</button>
+            <button class="active">이번 주</button>
+            <button>이번 달</button>
+            <button>30일</button>
+          </div>
+          <span class="select num">전체 팀 <span class="caret"></span></span>
+          <button class="btn btn-primary">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 8a6 6 0 0110.3-4.2L14 2v4h-4M14 8a6 6 0 01-10.3 4.2L2 14v-4h4"/>
+            </svg>
+            새로고침
+          </button>
+        </div>
+      </div>
+
+      <!-- Grid -->
+      <div class="grid">
+
+        <!-- ROW 1: 4 hero KPI cards -->
+        <section class="card col-3 kpi">
+          <div class="kpi-eyebrow">매드업 전체 토큰 · 7일</div>
+          <div class="kpi-numeral">
+            <span class="big num">1.62</span>
+            <span class="suffix">B tokens</span>
+          </div>
+          <div class="kpi-context">
+            <span class="delta up num">+18%</span>
+            <span>vs 전주</span>
+          </div>
+          <svg class="kpi-spark" width="120" height="50" viewBox="0 0 120 50">
+            <defs><linearGradient id="sf1" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stop-color="#4DA3FF" stop-opacity="0.4"/>
+              <stop offset="100%" stop-color="#4DA3FF" stop-opacity="0"/>
+            </linearGradient></defs>
+            <path d="M0,38 C12,32 22,30 32,26 C46,20 58,32 70,22 C85,12 96,18 110,8 L120,4 L120,50 L0,50 Z" fill="url(#sf1)"/>
+            <path d="M0,38 C12,32 22,30 32,26 C46,20 58,32 70,22 C85,12 96,18 110,8 L120,4"
+                  fill="none" stroke="#4DA3FF" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </section>
+
+        <section class="card col-3 kpi">
+          <div class="kpi-eyebrow">전체 비용 · 7일</div>
+          <div class="kpi-numeral">
+            <span class="big amber num">$1,127</span>
+          </div>
+          <div class="kpi-context">
+            <span class="delta up num">+22%</span>
+            <span>·</span>
+            <span class="num">₩1,545,200</span>
+          </div>
+          <svg class="kpi-spark" width="120" height="50" viewBox="0 0 120 50">
+            <defs><linearGradient id="sf2" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stop-color="#F5B544" stop-opacity="0.4"/>
+              <stop offset="100%" stop-color="#F5B544" stop-opacity="0"/>
+            </linearGradient></defs>
+            <path d="M0,40 C14,38 24,28 36,30 C50,32 62,24 76,18 C90,12 100,16 120,6 L120,50 L0,50 Z" fill="url(#sf2)"/>
+            <path d="M0,40 C14,38 24,28 36,30 C50,32 62,24 76,18 C90,12 100,16 120,6"
+                  fill="none" stroke="#F5B544" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </section>
+
+        <section class="card col-3 kpi">
+          <div class="kpi-eyebrow">활성 사용자</div>
+          <div class="kpi-numeral">
+            <span class="big lime num">10</span>
+            <span class="suffix">/ 16명 옵트인</span>
+          </div>
+          <div class="kpi-context">
+            <span style="color:var(--lime);">●</span>
+            <span>현재 5명 활성 세션 중</span>
+          </div>
+          <!-- mini dot grid -->
+          <div style="position:absolute; right:18px; bottom:14px; display:grid;
+            grid-template-columns: repeat(6, 8px); gap:5px;">
+            <span style="width:8px; height:8px; border-radius:2px; background:var(--lime); box-shadow:0 0 6px rgba(155,225,93,0.5);"></span>
+            <span style="width:8px; height:8px; border-radius:2px; background:var(--lime); box-shadow:0 0 6px rgba(155,225,93,0.5);"></span>
+            <span style="width:8px; height:8px; border-radius:2px; background:var(--lime); box-shadow:0 0 6px rgba(155,225,93,0.5);"></span>
+            <span style="width:8px; height:8px; border-radius:2px; background:var(--lime); box-shadow:0 0 6px rgba(155,225,93,0.5);"></span>
+            <span style="width:8px; height:8px; border-radius:2px; background:var(--lime); box-shadow:0 0 6px rgba(155,225,93,0.5);"></span>
+            <span style="width:8px; height:8px; border-radius:2px; background:var(--lime); box-shadow:0 0 6px rgba(155,225,93,0.5);"></span>
+            <span style="width:8px; height:8px; border-radius:2px; background:var(--lime-deep);"></span>
+            <span style="width:8px; height:8px; border-radius:2px; background:var(--lime-deep);"></span>
+            <span style="width:8px; height:8px; border-radius:2px; background:var(--lime-deep);"></span>
+            <span style="width:8px; height:8px; border-radius:2px; background:var(--lime-deep);"></span>
+            <span style="width:8px; height:8px; border-radius:2px; background:var(--surface-3);"></span>
+            <span style="width:8px; height:8px; border-radius:2px; background:var(--surface-3);"></span>
+            <span style="width:8px; height:8px; border-radius:2px; background:var(--surface-3);"></span>
+            <span style="width:8px; height:8px; border-radius:2px; background:var(--surface-3);"></span>
+            <span style="width:8px; height:8px; border-radius:2px; background:var(--surface-3);"></span>
+            <span style="width:8px; height:8px; border-radius:2px; background:var(--surface-3);"></span>
+          </div>
+        </section>
+
+        <section class="card col-3 kpi">
+          <div class="kpi-eyebrow">누적 세션 · 7일</div>
+          <div class="kpi-numeral">
+            <span class="big violet num">1,284</span>
+            <span class="suffix">건</span>
+          </div>
+          <div class="kpi-context">
+            <span class="delta up num">+34%</span>
+            <span>평균 8.2분</span>
+          </div>
+          <!-- ring meter at right bottom -->
+          <svg class="kpi-spark" width="64" height="64" viewBox="0 0 64 64" style="right:14px; bottom:10px;">
+            <circle cx="32" cy="32" r="24" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="6"/>
+            <circle cx="32" cy="32" r="24" fill="none" stroke="#B68CFF" stroke-width="6" stroke-linecap="round"
+                    stroke-dasharray="113.1" stroke-dashoffset="22" transform="rotate(-90 32 32)"/>
+            <text x="32" y="36" text-anchor="middle" font-size="11" font-weight="600" fill="#B68CFF" font-family="JetBrains Mono">80%</text>
+          </svg>
+        </section>
+
+        <!-- ROW 2: Leaderboard (8) + Trend chart (4) -->
+        <section class="card col-8" data-leaderboard>
+          <div class="card-head">
+            <div class="row">
+              <div class="card-title">사용량 리더보드</div>
+              <span style="font-size:11.5px; color:var(--text-tertiary);">이번 주 · 매드업 전사</span>
+            </div>
+            <div class="head-tools">
+              <span class="head-btn" data-reset>
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 8a6 6 0 0110.3-4.2L14 2v4h-4"/></svg>
+                초기화
+              </span>
+              <span class="head-btn">전체 보기
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 1l4 4-4 4"/></svg>
+              </span>
+            </div>
+          </div>
+
+          <!-- Filter / Search bar -->
+          <div class="lb-filter-bar">
+            <span class="chip active" data-team="all">전체 <span class="ct">8</span></span>
+            <span class="chip" data-team="Backend">Backend <span class="ct">3</span></span>
+            <span class="chip" data-team="Frontend">Frontend <span class="ct">2</span></span>
+            <span class="chip" data-team="Data">Data <span class="ct">1</span></span>
+            <span class="chip" data-team="DevOps">DevOps <span class="ct">1</span></span>
+            <span class="chip" data-team="Mobile">Mobile <span class="ct">1</span></span>
+            <label class="lb-search">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5"/><path d="M10.5 10.5L14 14"/></svg>
+              <input type="text" placeholder="이름 / 이메일 검색…" />
+            </label>
+          </div>
+
+          <div class="lb-table">
+            <div class="lb-row head">
+              <div class="h active desc" data-sort="rank">#<span class="sort-arrow"></span></div>
+              <div class="h" data-sort="name">USER<span class="sort-arrow"></span></div>
+              <div class="h" data-sort="tokens">TOKENS<span class="sort-arrow"></span></div>
+              <div class="h right" data-sort="usd" style="text-align:right;">USD<span class="sort-arrow"></span></div>
+              <div class="h right" data-sort="sessions" style="text-align:right;">SESSIONS<span class="sort-arrow"></span></div>
+            </div>
+
+            <div class="lb-row" data-name="hs.lee" data-team="Backend" data-rank="1" data-tokens="298000000" data-usd="173.4" data-sessions="142">
+              <div class="lb-rank gold">1</div>
+              <div class="lb-user">
+                <div class="av" style="background:linear-gradient(135deg,#f5d36b,#d49b1b); color:#3a2607;">HL</div>
+                <div style="min-width:0;">
+                  <div class="nm"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="0169722f6d6464416c606574712f626e6c">[email&#160;protected]</a></div>
+                  <div class="mail">Backend · Seoul</div>
+                </div>
+              </div>
+              <div class="lb-bar-cell">
+                <div class="lb-bar"><div class="fill" style="width:100%"></div></div>
+                <span class="lb-tok num">298M</span>
+              </div>
+              <div class="lb-usd num">$173.40</div>
+              <div class="lb-tok num" style="color:var(--violet);">142</div>
+            </div>
+
+            <div class="lb-row" data-name="scnam" data-team="Frontend" data-rank="2" data-tokens="197000000" data-usd="115.2" data-sessions="98">
+              <div class="lb-rank silver">2</div>
+              <div class="lb-user">
+                <div class="av" style="background:linear-gradient(135deg,#cfd6e6,#8593af); color:#1b223a;">SC</div>
+                <div style="min-width:0;">
+                  <div class="nm"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="f281919c939fb29f93968782dc919d9f">[email&#160;protected]</a></div>
+                  <div class="mail">Frontend</div>
+                </div>
+              </div>
+              <div class="lb-bar-cell">
+                <div class="lb-bar"><div class="fill" style="width:66%"></div></div>
+                <span class="lb-tok num">197M</span>
+              </div>
+              <div class="lb-usd num">$115.20</div>
+              <div class="lb-tok num" style="color:var(--violet);">98</div>
+            </div>
+
+            <div class="lb-row" data-name="mhsong" data-team="Data" data-rank="3" data-tokens="195000000" data-usd="129.3" data-sessions="87">
+              <div class="lb-rank bronze">3</div>
+              <div class="lb-user">
+                <div class="av" style="background:linear-gradient(135deg,#d99878,#a26041); color:#2a160a;">MS</div>
+                <div style="min-width:0;">
+                  <div class="nm"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="8be6e3f8e4e5eccbe6eaeffefba5e8e4e6">[email&#160;protected]</a></div>
+                  <div class="mail">Data</div>
+                </div>
+              </div>
+              <div class="lb-bar-cell">
+                <div class="lb-bar"><div class="fill" style="width:65%"></div></div>
+                <span class="lb-tok num">195M</span>
+              </div>
+              <div class="lb-usd num">$129.30</div>
+              <div class="lb-tok num" style="color:var(--violet);">87</div>
+            </div>
+
+            <div class="lb-row" data-name="yy.kim" data-team="Backend" data-rank="4" data-tokens="145000000" data-usd="97.9" data-sessions="73">
+              <div class="lb-rank">4</div>
+              <div class="lb-user">
+                <div class="av">YK</div>
+                <div style="min-width:0;">
+                  <div class="nm"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="b9c0c097d2d0d4f9d4d8ddccc997dad6d4">[email&#160;protected]</a></div>
+                  <div class="mail">Backend</div>
+                </div>
+              </div>
+              <div class="lb-bar-cell">
+                <div class="lb-bar"><div class="fill" style="width:49%"></div></div>
+                <span class="lb-tok num">145M</span>
+              </div>
+              <div class="lb-usd num">$97.90</div>
+              <div class="lb-tok num" style="color:var(--violet);">73</div>
+            </div>
+
+            <div class="lb-row" data-name="jayden" data-team="Mobile" data-rank="5" data-tokens="128000000" data-usd="61.8" data-sessions="61">
+              <div class="lb-rank">5</div>
+              <div class="lb-user">
+                <div class="av">JD</div>
+                <div style="min-width:0;">
+                  <div class="nm"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="7f151e061b1a113f121e1b0a0f511c1012">[email&#160;protected]</a></div>
+                  <div class="mail">Mobile</div>
+                </div>
+              </div>
+              <div class="lb-bar-cell">
+                <div class="lb-bar"><div class="fill" style="width:43%"></div></div>
+                <span class="lb-tok num">128M</span>
+              </div>
+              <div class="lb-usd num">$61.80</div>
+              <div class="lb-tok num" style="color:var(--violet);">61</div>
+            </div>
+
+            <div class="lb-row" data-name="sh.kim" data-team="DevOps" data-rank="6" data-tokens="117000000" data-usd="81.6" data-sessions="54">
+              <div class="lb-rank">6</div>
+              <div class="lb-user">
+                <div class="av">SK</div>
+                <div style="min-width:0;">
+                  <div class="nm"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="3a4952145153577a575b5e4f4a14595557">[email&#160;protected]</a></div>
+                  <div class="mail">DevOps</div>
+                </div>
+              </div>
+              <div class="lb-bar-cell">
+                <div class="lb-bar"><div class="fill" style="width:39%"></div></div>
+                <span class="lb-tok num">117M</span>
+              </div>
+              <div class="lb-usd num">$81.60</div>
+              <div class="lb-tok num" style="color:var(--violet);">54</div>
+            </div>
+
+            <div class="lb-row me" data-name="정현조 hnjung" data-team="Backend" data-rank="7" data-tokens="107000000" data-usd="64.8" data-sessions="42">
+              <div class="lb-rank" style="background: var(--azure); color: var(--text-on-accent);">7</div>
+              <div class="lb-user">
+                <div class="av" style="background:linear-gradient(135deg,#4da3ff,#b68cff); color:#06122b;">HJ</div>
+                <div style="min-width:0;">
+                  <div class="nm">정현조 <span class="me-tag">나</span></div>
+                  <div class="mail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="b0d8dedac5ded7f0ddd1d4c5c09ed3dfdd">[email&#160;protected]</a> · Backend</div>
+                </div>
+              </div>
+              <div class="lb-bar-cell">
+                <div class="lb-bar"><div class="fill" style="width:36%"></div></div>
+                <span class="lb-tok num">107M</span>
+              </div>
+              <div class="lb-usd num">$64.80</div>
+              <div class="lb-tok num" style="color:var(--violet);">42</div>
+            </div>
+
+            <div class="lb-row" data-name="djlee" data-team="Frontend" data-rank="8" data-tokens="79500000" data-usd="72.0" data-sessions="38">
+              <div class="lb-rank">8</div>
+              <div class="lb-user">
+                <div class="av">DJ</div>
+                <div style="min-width:0;">
+                  <div class="nm"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="1b7f71777e7e5b767a7f6e6b35787476">[email&#160;protected]</a></div>
+                  <div class="mail">Frontend</div>
+                </div>
+              </div>
+              <div class="lb-bar-cell">
+                <div class="lb-bar"><div class="fill" style="width:27%"></div></div>
+                <span class="lb-tok num">79.5M</span>
+              </div>
+              <div class="lb-usd num">$72.00</div>
+              <div class="lb-tok num" style="color:var(--violet);">38</div>
+            </div>
+          </div>
+
+          <div class="lb-foot">
+            <span class="lb-sum"><strong>1.62B</strong> tokens · <strong>$897</strong> · <strong>595</strong> sessions</span>
+            <span class="lb-context">옵트인 사용자만 표시 · 16명 중 10명</span>
+          </div>
+        </section>
+
+        <!-- Trend + model breakdown -->
+        <section class="card col-4">
+          <div class="card-head">
+            <div class="card-title">모델별 토큰</div>
+            <span style="font-size:11px; color:var(--text-tertiary);">7일 · 전사</span>
+          </div>
+          <div class="bar-list">
+            <div class="bar-row">
+              <div class="top"><span class="lbl"><span class="rank-glyph">1</span>sonnet-4-5</span><span class="val num">1.04B</span></div>
+              <div class="bar"><div class="fill" style="width:100%"></div></div>
+            </div>
+            <div class="bar-row violet">
+              <div class="top"><span class="lbl"><span class="rank-glyph">2</span>opus-4-1</span><span class="val num">421M</span></div>
+              <div class="bar"><div class="fill" style="width:40%"></div></div>
+            </div>
+            <div class="bar-row lime">
+              <div class="top"><span class="lbl"><span class="rank-glyph">3</span>haiku-4-5</span><span class="val num">112M</span></div>
+              <div class="bar"><div class="fill" style="width:11%"></div></div>
+            </div>
+            <div class="bar-row amber">
+              <div class="top"><span class="lbl"><span class="rank-glyph">4</span>sonnet-3-7</span><span class="val num">47M</span></div>
+              <div class="bar"><div class="fill" style="width:4.5%"></div></div>
+            </div>
+            <div class="bar-row">
+              <div class="top"><span class="lbl"><span class="rank-glyph">5</span>haiku-3-5</span><span class="val num">3.2M</span></div>
+              <div class="bar"><div class="fill" style="width:0.5%"></div></div>
+            </div>
+          </div>
+
+          <!-- mini area chart for total trend -->
+          <div class="chart-well" style="margin-top: 16px;">
+            <div style="font-size:10.5px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:var(--text-tertiary); margin-bottom:6px;">7일 토큰 트렌드</div>
+            <svg viewBox="0 0 320 90" preserveAspectRatio="none" style="width:100%; height:90px;">
+              <defs>
+                <linearGradient id="trendFill" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stop-color="#4DA3FF" stop-opacity="0.35"/>
+                  <stop offset="100%" stop-color="#4DA3FF" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <g stroke="rgba(255,255,255,0.05)" stroke-width="1">
+                <line x1="0" y1="20" x2="320" y2="20"/>
+                <line x1="0" y1="50" x2="320" y2="50"/>
+                <line x1="0" y1="80" x2="320" y2="80"/>
+              </g>
+              <path d="M0,55 C20,52 40,30 60,28 C80,26 100,42 120,40 C140,38 160,18 180,16 C200,14 220,38 240,46 C260,54 280,52 320,38 L320,90 L0,90 Z" fill="url(#trendFill)"/>
+              <path d="M0,55 C20,52 40,30 60,28 C80,26 100,42 120,40 C140,38 160,18 180,16 C200,14 220,38 240,46 C260,54 280,52 320,38"
+                    fill="none" stroke="#4DA3FF" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="320" cy="38" r="3.5" fill="#4DA3FF"/>
+              <circle cx="320" cy="38" r="6" fill="#4DA3FF" opacity="0.25"/>
+            </svg>
+            <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-faint); font-family:'JetBrains Mono', monospace; margin-top:2px;">
+              <span>05-09</span><span>05-11</span><span>05-13</span><span>05-15</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- ROW 3: MCP TOP 10 (6) + Plugin TOP 10 (6) -->
+        <section class="card col-6">
+          <div class="card-head">
+            <div class="row">
+              <div class="card-title">사내 MCP TOP 10</div>
+              <span style="font-size:11.5px; color:var(--text-tertiary);">호출 횟수 · 30일</span>
+            </div>
+            <div class="head-tools">
+              <span class="head-btn">
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 6l5-3 5 3v6l-5 3-5-3V6z"/><path d="M3 6l5 3 5-3M8 9v6"/></svg>
+                내 사용량 비교
+              </span>
+            </div>
+          </div>
+          <div class="bar-list">
+            <div class="bar-row">
+              <div class="top"><span class="lbl"><span class="rank-glyph">1</span>atlassian</span><span class="val num">309</span></div>
+              <div class="bar"><div class="fill" style="width:100%"></div></div>
+            </div>
+            <div class="bar-row">
+              <div class="top"><span class="lbl"><span class="rank-glyph">2</span>playwright</span><span class="val num">299</span></div>
+              <div class="bar"><div class="fill" style="width:97%"></div></div>
+            </div>
+            <div class="bar-row violet">
+              <div class="top"><span class="lbl"><span class="rank-glyph">3</span>supabase</span><span class="val num">186</span></div>
+              <div class="bar"><div class="fill" style="width:60%"></div></div>
+            </div>
+            <div class="bar-row">
+              <div class="top"><span class="lbl"><span class="rank-glyph">4</span>github</span><span class="val num">154</span></div>
+              <div class="bar"><div class="fill" style="width:50%"></div></div>
+            </div>
+            <div class="bar-row lime">
+              <div class="top"><span class="lbl"><span class="rank-glyph">5</span>linear</span><span class="val num">128</span></div>
+              <div class="bar"><div class="fill" style="width:41%"></div></div>
+            </div>
+            <div class="bar-row">
+              <div class="top"><span class="lbl"><span class="rank-glyph">6</span>filesystem</span><span class="val num">112</span></div>
+              <div class="bar"><div class="fill" style="width:36%"></div></div>
+            </div>
+            <div class="bar-row amber">
+              <div class="top"><span class="lbl"><span class="rank-glyph">7</span>slack-bot</span><span class="val num">84</span></div>
+              <div class="bar"><div class="fill" style="width:27%"></div></div>
+            </div>
+            <div class="bar-row">
+              <div class="top"><span class="lbl"><span class="rank-glyph">8</span>context7</span><span class="val num">47</span></div>
+              <div class="bar"><div class="fill" style="width:15%"></div></div>
+            </div>
+          </div>
+          <div class="lb-foot">
+            <span><strong>13</strong> MCP 서버 활성 · <strong>1,452</strong> 호출 / 7일</span>
+            <span style="color:var(--azure-bright);">내 TOP: playwright (298)</span>
+          </div>
+        </section>
+
+        <section class="card col-6">
+          <div class="card-head">
+            <div class="row">
+              <div class="card-title">사내 플러그인 TOP 10</div>
+              <span style="font-size:11.5px; color:var(--text-tertiary);">활성 사용자 수 · 30일</span>
+            </div>
+            <div class="head-tools">
+              <span class="head-btn">
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 2v3M11 2v3M2 6h12M2 6v7a1 1 0 001 1h10a1 1 0 001-1V6"/></svg>
+                플러그인 추가
+              </span>
+            </div>
+          </div>
+          <div class="bar-list">
+            <div class="bar-row">
+              <div class="top"><span class="lbl"><span class="rank-glyph">1</span>oh-my-claude</span><span class="val num">204</span></div>
+              <div class="bar"><div class="fill" style="width:100%"></div></div>
+            </div>
+            <div class="bar-row violet">
+              <div class="top"><span class="lbl"><span class="rank-glyph">2</span>claude-shell-tools</span><span class="val num">87</span></div>
+              <div class="bar"><div class="fill" style="width:43%"></div></div>
+            </div>
+            <div class="bar-row lime">
+              <div class="top"><span class="lbl"><span class="rank-glyph">3</span>thinking-modes</span><span class="val num">52</span></div>
+              <div class="bar"><div class="fill" style="width:25%"></div></div>
+            </div>
+            <div class="bar-row">
+              <div class="top"><span class="lbl"><span class="rank-glyph">4</span>dct-claude-plus</span><span class="val num">14</span></div>
+              <div class="bar"><div class="fill" style="width:7%"></div></div>
+            </div>
+            <div class="bar-row amber">
+              <div class="top"><span class="lbl"><span class="rank-glyph">5</span>review-bot</span><span class="val num">8</span></div>
+              <div class="bar"><div class="fill" style="width:4%"></div></div>
+            </div>
+            <div class="bar-row">
+              <div class="top"><span class="lbl"><span class="rank-glyph">6</span>claude-export</span><span class="val num">6</span></div>
+              <div class="bar"><div class="fill" style="width:3%"></div></div>
+            </div>
+            <div class="bar-row">
+              <div class="top"><span class="lbl"><span class="rank-glyph">7</span>oh_my_claude_lab</span><span class="val num">3</span></div>
+              <div class="bar"><div class="fill" style="width:1.5%"></div></div>
+            </div>
+            <div class="bar-row coral">
+              <div class="top"><span class="lbl"><span class="rank-glyph">8</span>experimental-x</span><span class="val num">2</span></div>
+              <div class="bar"><div class="fill" style="width:1%"></div></div>
+            </div>
+          </div>
+          <div class="lb-foot">
+            <span><strong>8</strong> 플러그인 활성 · <strong>376</strong> 활성 사용자 / 7일</span>
+            <span style="color:var(--azure-bright);">내 TOP: oh-my-claude (196)</span>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+</div>
+</div>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="theme.js"></script>
+
+<script>
+// ============================================================
+// Leaderboard sort + filter
+// ============================================================
+(function () {
+  const card = document.querySelector("[data-leaderboard]");
+  if (!card) return;
+  const table = card.querySelector(".lb-table");
+  const rows = Array.from(table.querySelectorAll(".lb-row:not(.head)"));
+  const chips = card.querySelectorAll(".chip[data-team]");
+  const searchInput = card.querySelector(".lb-search input");
+  const headers = card.querySelectorAll(".lb-row.head .h[data-sort]");
+  const resetBtn = card.querySelector("[data-reset]");
+  const sumEl = card.querySelector(".lb-sum");
+  const ctxEl = card.querySelector(".lb-context");
+
+  const DEFAULT = { team: "all", q: "", sort: "rank", dir: "asc" };
+  let state = { ...DEFAULT };
+
+  function compactTokens(n) {
+    if (n >= 1e9) return (n / 1e9).toFixed(2).replace(/\.0+$/, "") + "B";
+    if (n >= 1e6) return (n / 1e6).toFixed(n >= 100e6 ? 0 : 1).replace(/\.0$/, "") + "M";
+    if (n >= 1e3) return (n / 1e3).toFixed(0) + "K";
+    return String(n);
+  }
+
+  function update() {
+    // Filter
+    const visible = rows.filter((r) => {
+      if (state.team !== "all" && r.dataset.team !== state.team) return false;
+      if (state.q) {
+        const q = state.q.toLowerCase();
+        const haystack = (r.dataset.name + " " + (r.querySelector(".mail")?.textContent || "")).toLowerCase();
+        if (!haystack.includes(q)) return false;
+      }
+      return true;
+    });
+
+    // Sort
+    const numericKeys = new Set(["rank", "tokens", "usd", "sessions"]);
+    const sorted = visible.slice().sort((a, b) => {
+      if (numericKeys.has(state.sort)) {
+        const av = +a.dataset[state.sort], bv = +b.dataset[state.sort];
+        return state.dir === "asc" ? av - bv : bv - av;
+      }
+      const av = (a.dataset.name || "").toLowerCase();
+      const bv = (b.dataset.name || "").toLowerCase();
+      return state.dir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+    });
+
+    // Hide / show + reorder DOM
+    rows.forEach((r) => (r.style.display = "none"));
+    // remove existing empty state
+    table.querySelector(".lb-empty")?.remove();
+    if (sorted.length === 0) {
+      const e = document.createElement("div");
+      e.className = "lb-empty";
+      e.textContent = "결과가 없어요. 다른 팀이나 검색어를 시도해 보세요.";
+      table.appendChild(e);
+    } else {
+      sorted.forEach((r) => {
+        r.style.display = "";
+        table.appendChild(r);
+      });
+    }
+
+    // Re-normalize bar widths
+    const maxTok = Math.max(...sorted.map((r) => +r.dataset.tokens), 1);
+    sorted.forEach((r) => {
+      const fill = r.querySelector(".lb-bar .fill");
+      if (fill) fill.style.width = ((+r.dataset.tokens / maxTok) * 100).toFixed(1) + "%";
+    });
+
+    // Header indicators
+    headers.forEach((h) => {
+      h.classList.remove("active", "asc", "desc");
+      if (h.dataset.sort === state.sort) {
+        h.classList.add("active", state.dir);
+      }
+    });
+
+    // Chip state
+    chips.forEach((c) => c.classList.toggle("active", c.dataset.team === state.team));
+
+    // Footer total
+    let totalTok = 0, totalUsd = 0, totalSess = 0;
+    sorted.forEach((r) => {
+      totalTok += +r.dataset.tokens;
+      totalUsd += +r.dataset.usd;
+      totalSess += +r.dataset.sessions;
+    });
+    if (sumEl) {
+      sumEl.innerHTML =
+        "<strong>" + compactTokens(totalTok) + "</strong> tokens · " +
+        "<strong>$" + totalUsd.toFixed(0) + "</strong> · " +
+        "<strong>" + totalSess + "</strong> sessions";
+    }
+    if (ctxEl) {
+      const total = rows.length;
+      ctxEl.textContent = `${sorted.length}/${total} 사용자 표시 · ${state.team === "all" ? "전체 팀" : state.team}`;
+    }
+  }
+
+  chips.forEach((chip) => {
+    chip.addEventListener("click", () => {
+      state.team = chip.dataset.team;
+      update();
+    });
+  });
+
+  searchInput?.addEventListener("input", (e) => {
+    state.q = e.target.value.trim();
+    update();
+  });
+
+  headers.forEach((h) => {
+    h.addEventListener("click", () => {
+      const key = h.dataset.sort;
+      if (state.sort === key) {
+        state.dir = state.dir === "asc" ? "desc" : "asc";
+      } else {
+        state.sort = key;
+        // numeric defaults desc, text defaults asc, rank defaults asc
+        state.dir = key === "name" || key === "rank" ? "asc" : "desc";
+      }
+      update();
+    });
+  });
+
+  resetBtn?.addEventListener("click", () => {
+    state = { ...DEFAULT };
+    if (searchInput) searchInput.value = "";
+    update();
+  });
+
+  update();
+})();
+</script>
+
+</body>
+</html>

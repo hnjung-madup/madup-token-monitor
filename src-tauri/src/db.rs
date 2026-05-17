@@ -64,6 +64,8 @@ fn migrate(conn: &Connection) -> Result<()> {
 
     // 옛 (source, session_id, ts, model, tokens) UNIQUE INDEX는 약해서 중복 허용 — 제거
     let _ = conn.execute("DROP INDEX IF EXISTS uniq_usage_event", []);
+    // 일회성 partial index 시도 흔적 제거 (있으면)
+    let _ = conn.execute("DROP INDEX IF EXISTS uniq_usage_msg_id", []);
 
     // ── 일회성 plugin_id 청소 ───────────────────────────────────────────────
     // 옛 휴리스틱: 하이픈 있는 mcp_server를 그대로 plugin_id로 복사 (mcp-atlassian, slack-bot,

@@ -1,0 +1,105 @@
+/* ============================================================
+   Madup Console — Light theme overrides.
+   Apply by adding class `theme-light` to <html>.
+   ============================================================ */
+
+html.theme-light {
+  --canvas-deep:    #E2E6EE;
+  --canvas:         #F2F4F9;
+  --canvas-soft:    #E9EDF7;
+  --vignette:       #DCE3F2;
+
+  --surface-1:      #FFFFFF;
+  --surface-2:      #F0F3F9;
+  --surface-3:      #E1E6F0;
+  --surface-glass:  rgba(0,0,0,0.02);
+
+  --hairline:        rgba(15,24,55,0.08);
+  --hairline-strong: rgba(15,24,55,0.16);
+  --inner-highlight: rgba(255,255,255,0.6);
+  --outer-glow:      rgba(15,24,55,0.06);
+
+  --text-primary:   #0E142A;
+  --text-secondary: #495171;
+  --text-tertiary:  #6B7493;
+  --text-faint:     #A1A9C0;
+  --text-on-accent: #FFFFFF;
+
+  /* Keep azure family but rebalance the deepest variant for legibility on white */
+  --azure:          #2C7BE5;
+  --azure-bright:   #4DA3FF;
+  --azure-deep:     #1E5BB8;
+  --azure-soft:     rgba(44,123,229,0.10);
+  --azure-glow:     rgba(44,123,229,0.25);
+
+  /* Signal — deepen so they read on white */
+  --lime:        #4FA221;
+  --lime-deep:   #2E7710;
+  --lime-soft:   rgba(79,162,33,0.12);
+  --amber:       #C88A1C;
+  --amber-deep:  #966515;
+  --amber-soft:  rgba(200,138,28,0.12);
+  --coral:       #D43F2E;
+  --coral-deep:  #9D2A1D;
+  --coral-soft:  rgba(212,63,46,0.10);
+  --violet:      #8358D9;
+  --violet-deep: #5E3CAA;
+  --violet-soft: rgba(131,88,217,0.12);
+
+  --success: var(--lime);
+  --warning: var(--amber);
+  --danger:  var(--coral);
+  --info:    var(--azure);
+}
+
+/* Stage background flips to a soft daylight wash */
+html.theme-light body { background: var(--canvas-deep); color: var(--text-primary); }
+html.theme-light .stage {
+  background: radial-gradient(ellipse at top left, #ffffff 0%, #d9deec 70%) !important;
+}
+
+/* Window shell: soft daylight gradient, light shadow */
+html.theme-light .window {
+  background:
+    radial-gradient(ellipse 900px 600px at -10% -20%, rgba(180,200,255,0.55) 0%, transparent 60%),
+    radial-gradient(ellipse 700px 400px at 110% 110%, rgba(220,200,255,0.30) 0%, transparent 60%),
+    linear-gradient(180deg, var(--canvas-soft) 0%, var(--canvas) 35%, var(--canvas) 100%) !important;
+  box-shadow: 0 30px 90px rgba(15,24,55,0.18), 0 8px 30px rgba(15,24,55,0.08) !important;
+}
+
+/* Sidebar — subtle alternate tint */
+html.theme-light .sidebar { background: rgba(245,247,252,0.7) !important; }
+html.theme-light .channel-rail { background: rgba(240,243,249,0.6) !important; }
+html.theme-light .members { background: rgba(240,243,249,0.5) !important; }
+
+/* Brand mark stays vibrant blue */
+html.theme-light .brand-mark { box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 4px 14px rgba(44,123,229,0.25); }
+
+/* Status pill colors retain semantics; lime-soft adapts via vars */
+/* Card top-edge highlight reads on white as a hairline instead of a glass reflection */
+html.theme-light .card::before {
+  background: linear-gradient(180deg, rgba(255,255,255,0.5) 0%, transparent 100%) !important;
+}
+
+/* live-dot keeps glow but tuned for light */
+html.theme-light .live-dot { box-shadow: 0 0 6px rgba(79,162,33,0.6) !important; }
+
+/* Chart fills (SVG inline gradients) — we can't override IDs, but bars and lines use vars elsewhere */
+/* The big bar chart fills are inline gradients defined in svg <defs>; they stay azure since
+   azure-bright -> azure-deep still maps to the new lighter blue family in this theme. */
+
+/* Theme-toggle button visual */
+.theme-toggle {
+  width: 26px; height: 26px;
+  border: 0; background: transparent;
+  color: var(--text-tertiary);
+  border-radius: 6px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.theme-toggle:hover { background: var(--surface-2); color: var(--text-secondary); }
+.theme-toggle .moon, .theme-toggle .sun { position:absolute; transition: opacity 180ms ease, transform 180ms ease; }
+.theme-toggle .sun { opacity: 0; transform: scale(0.6) rotate(-30deg); }
+html.theme-light .theme-toggle .moon { opacity: 0; transform: scale(0.6) rotate(30deg); }
+html.theme-light .theme-toggle .sun  { opacity: 1; transform: scale(1) rotate(0); }
+.theme-toggle .moon { opacity: 1; transform: scale(1) rotate(0); }

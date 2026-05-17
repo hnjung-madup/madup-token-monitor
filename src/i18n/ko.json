@@ -1,10 +1,7 @@
 {
   "nav": {
-    "dashboard": "대시보드",
-    "mcp": "MCP 분석",
-    "plugins": "플러그인",
-    "leaderboard": "사내 리더보드",
-    "chat": "팀 채팅",
+    "dashboard": "내 대시보드",
+    "team": "사내 대시보드",
     "settings": "설정"
   },
   "dashboard": {
@@ -33,36 +30,39 @@
     },
     "empty": "아직 사용 기록이 없습니다"
   },
-  "mcp": {
-    "title": "MCP 사용 분석",
-    "myTop10": "내 MCP TOP 10",
-    "teamTop10": "사내 MCP TOP 10",
-    "vsAverage": "평균 대비",
-    "calls": "호출",
-    "empty": "MCP 사용 기록이 없습니다"
-  },
-  "plugins": {
-    "title": "활성 플러그인",
-    "activeSince": "활성화",
-    "totalCalls": "총 호출 수",
-    "empty": "활성 플러그인이 없습니다"
-  },
-  "leaderboard": {
-    "title": "사내 리더보드",
-    "subtitle": "최근 7일 비용 기준 사내 TOP 10",
+  "team": {
+    "title": "사내 대시보드",
+    "subtitle": "MCP · 플러그인 · 리더보드 통합",
+    "members": "활성 사용자",
+    "totalTokens": "전체 토큰",
+    "totalCost": "전체 비용",
+    "totalSessions": "누적 세션",
+    "leaderboard": "사용량 리더보드",
+    "topMcp": "사내 MCP TOP 10",
+    "topPlugins": "사내 플러그인 TOP 10",
     "you": "나",
-    "messages": "메시지",
     "rank": "순위",
-    "user": "사용자"
-  },
-  "chat": {
-    "title": "팀 채팅",
-    "channels": "채널"
+    "user": "사용자",
+    "tokens": "토큰",
+    "cost": "비용",
+    "empty": "아직 집계 데이터가 없습니다"
   },
   "settings": {
     "title": "설정",
+    "subtitle": "계정 · 데이터 정책 · 앱 동작 · 버전 정보를 관리합니다.",
     "account": "계정",
     "dataPolicy": "데이터 정책",
-    "appInfo": "앱 정보"
+    "appBehavior": "앱 동작",
+    "appInfo": "앱 정보",
+    "danger": "위험 구역"
+  },
+  "login": {
+    "eyebrow": "MADUP MEMBERS ONLY",
+    "title": "토큰 콘솔",
+    "lede": "@madup.com 계정으로 Slack 인증 후 팀 채팅과 사내 집계 기능을 이용하세요.",
+    "slackButton": "Slack으로 로그인",
+    "loading": "로그인 중...",
+    "privacy": "Privacy",
+    "privacyNotice": "원시 토큰 로그·프롬프트·대화 내용은 이 디바이스를 떠나지 않습니다. 사내 집계는 옵트인이며, 익명화된 사용량 합계만 전송됩니다."
   }
 }

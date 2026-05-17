@@ -1,432 +1,590 @@
 @import "pretendard/dist/web/static/pretendard.css";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+@import "@fontsource/jetbrains-mono/600.css";
 @import "tailwindcss";
 
 /*
-  HP Inspired design tokens — DESIGN.md (alpha)
-  Single accent (Electric Blue #024ad8) + ink (#1a1a1a) on white canvas.
-  Typography: Pretendard for Korean (Forma DJR Micro fallback chain), weights 400/500/600/700.
+  Madup Console — DESIGN.md (alpha)
+  Dark indigo canvas + Electric Azure (lone accent) + four-light signal palette.
+  Pretendard for Korean / Latin prose, JetBrains Mono for every numeral.
 */
 
 @theme inline {
-  /* Brand & accent */
-  --color-primary: #024ad8;
-  --color-primary-bright: #296ef9;
-  --color-primary-deep: #0e3191;
-  --color-primary-soft: #c9e0fc;
-  --color-on-primary: #ffffff;
+  /* Canvas */
+  --color-canvas-deep: #070b17;
+  --color-canvas: #0b1126;
+  --color-canvas-soft: #11183a;
+  --color-vignette: #1a2350;
 
-  /* Ink (text on light surfaces) */
-  --color-ink: #1a1a1a;
-  --color-ink-deep: #000000;
-  --color-ink-soft: #292929;
-  --color-on-ink: #ffffff;
-  --color-charcoal: #3d3d3d;
-  --color-graphite: #636363;
+  /* Surfaces (3 tiers) */
+  --color-surface-1: #121a33;
+  --color-surface-2: #19233f;
+  --color-surface-3: #22304d;
+  --color-surface-glass: rgba(255, 255, 255, 0.04);
 
-  /* Surfaces */
-  --color-canvas: #ffffff;
-  --color-paper: #ffffff;
-  --color-cloud: #f7f7f7;
-  --color-fog: #e8e8e8;
-  --color-steel: #c2c2c2;
-  --color-hairline: #e8e8e8;
-  --color-hairline-strong: #c2c2c2;
+  /* Borders */
+  --color-hairline: rgba(255, 255, 255, 0.06);
+  --color-hairline-strong: rgba(255, 255, 255, 0.12);
+  --color-inner-highlight: rgba(255, 255, 255, 0.05);
 
-  /* Bloom (sale / destructive) */
-  --color-bloom-coral: #ff5050;
-  --color-bloom-rose: #f9d4d2;
-  --color-bloom-deep: #b3262b;
-  --color-bloom-wine: #5a1313;
+  /* Text */
+  --color-text-primary: #e7ecf7;
+  --color-text-secondary: #9ca8c5;
+  --color-text-tertiary: #6a7593;
+  --color-text-faint: #454e6a;
+  --color-text-on-accent: #06122b;
 
-  /* Storm (printer-plan accents) */
-  --color-storm-mist: #8ebdce;
-  --color-storm-sea: #7fadbe;
-  --color-storm-deep: #356373;
+  /* Azure (lone accent) */
+  --color-azure: #4da3ff;
+  --color-azure-bright: #7bbcff;
+  --color-azure-deep: #2c7be5;
+  --color-azure-soft: rgba(77, 163, 255, 0.14);
+  --color-azure-glow: rgba(77, 163, 255, 0.35);
 
-  /* Compatibility shims for legacy class names */
-  --color-background: #ffffff;
-  --color-foreground: #1a1a1a;
-  --color-card: #ffffff;
-  --color-card-foreground: #1a1a1a;
-  --color-muted: #f7f7f7;
-  --color-muted-foreground: #636363;
-  --color-border: #e8e8e8;
-  --color-input: #e8e8e8;
-  --color-secondary: #1a1a1a;
-  --color-accent: #c9e0fc;
-  --color-popover: #ffffff;
-  --color-popover-foreground: #1a1a1a;
-  --color-destructive: #b3262b;
-  --color-sidebar: #ffffff;
-  --color-sidebar-foreground: #1a1a1a;
-  --color-sidebar-accent: #f7f7f7;
-  --color-sidebar-accent-foreground: #024ad8;
+  /* Four-light signal */
+  --color-lime: #9be15d;
+  --color-lime-deep: #6cb23b;
+  --color-lime-soft: rgba(155, 225, 93, 0.14);
+  --color-amber: #f5b544;
+  --color-amber-deep: #c88a1c;
+  --color-amber-soft: rgba(245, 181, 68, 0.14);
+  --color-coral: #ff6b5c;
+  --color-coral-deep: #d43f2e;
+  --color-coral-soft: rgba(255, 107, 92, 0.14);
+  --color-violet: #b68cff;
+  --color-violet-deep: #8358d9;
+  --color-violet-soft: rgba(182, 140, 255, 0.14);
 
-  /* Radius scale (DESIGN.md rounded.*) */
-  --radius-xs: 2px;
-  --radius-sm: 3px;
-  --radius-md: 4px;
-  --radius-lg: 8px;
-  --radius-xl: 16px;
+  /* Semantic aliases */
+  --color-success: #9be15d;
+  --color-warning: #f5b544;
+  --color-danger: #ff6b5c;
+  --color-info: #4da3ff;
+
+  /* shadcn-style compatibility shims (다크 톤 매핑) */
+  --color-background: #0b1126;
+  --color-foreground: #e7ecf7;
+  --color-card: #121a33;
+  --color-card-foreground: #e7ecf7;
+  --color-muted: #19233f;
+  --color-muted-foreground: #9ca8c5;
+  --color-border: rgba(255, 255, 255, 0.06);
+  --color-input: rgba(255, 255, 255, 0.06);
+  --color-popover: #121a33;
+  --color-popover-foreground: #e7ecf7;
+  --color-destructive: #ff6b5c;
+  --color-sidebar: #070b17;
+  --color-sidebar-foreground: #9ca8c5;
+  --color-sidebar-accent: rgba(77, 163, 255, 0.14);
+  --color-sidebar-accent-foreground: #7bbcff;
+
+  /* Radius scale */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-xxl: 20px;
   --radius-pill: 9999px;
 
   /* Spacing additions on top of Tailwind defaults */
-  --spacing-section: 80px;
+  --spacing-section: 56px;
+}
 
-  /* Shadows */
-  --shadow-soft-lift: 0 2px 8px rgba(26, 26, 26, 0.08);
-  --shadow-floating: 0 8px 24px rgba(26, 26, 26, 0.12);
+/* ----------------------------------------------------------------------------
+   Light theme overrides — design/theme.css 매핑.
+   Apply by adding `.theme-light` to <html>.
+---------------------------------------------------------------------------- */
+html.theme-light {
+  --color-canvas-deep: #e2e6ee;
+  --color-canvas: #f2f4f9;
+  --color-canvas-soft: #e9edf7;
+  --color-vignette: #dce3f2;
+
+  --color-surface-1: #ffffff;
+  --color-surface-2: #f0f3f9;
+  --color-surface-3: #e1e6f0;
+  --color-surface-glass: rgba(0, 0, 0, 0.02);
+
+  --color-hairline: rgba(15, 24, 55, 0.08);
+  --color-hairline-strong: rgba(15, 24, 55, 0.16);
+  --color-inner-highlight: rgba(255, 255, 255, 0.6);
+
+  --color-text-primary: #0e142a;
+  --color-text-secondary: #495171;
+  --color-text-tertiary: #6b7493;
+  --color-text-faint: #a1a9c0;
+  --color-text-on-accent: #ffffff;
+
+  --color-azure: #2c7be5;
+  --color-azure-bright: #4da3ff;
+  --color-azure-deep: #1e5bb8;
+  --color-azure-soft: rgba(44, 123, 229, 0.1);
+  --color-azure-glow: rgba(44, 123, 229, 0.25);
+
+  --color-lime: #4fa221;
+  --color-lime-deep: #2e7710;
+  --color-lime-soft: rgba(79, 162, 33, 0.12);
+  --color-amber: #c88a1c;
+  --color-amber-deep: #966515;
+  --color-amber-soft: rgba(200, 138, 28, 0.12);
+  --color-coral: #d43f2e;
+  --color-coral-deep: #9d2a1d;
+  --color-coral-soft: rgba(212, 63, 46, 0.1);
+  --color-violet: #8358d9;
+  --color-violet-deep: #5e3caa;
+  --color-violet-soft: rgba(131, 88, 217, 0.12);
+
+  --color-background: #f2f4f9;
+  --color-foreground: #0e142a;
+  --color-card: #ffffff;
+  --color-card-foreground: #0e142a;
+  --color-muted: #f0f3f9;
+  --color-muted-foreground: #495171;
+  --color-border: rgba(15, 24, 55, 0.08);
+  --color-popover: #ffffff;
+  --color-popover-foreground: #0e142a;
 }
 
 @layer base {
-  * {
+  *,
+  ::after,
+  ::before {
     border-color: var(--color-hairline);
   }
 
   html,
   body {
     background-color: var(--color-canvas);
-    color: var(--color-ink);
+    color: var(--color-text-primary);
   }
 
   body {
-    font-family: "Pretendard Variable", Pretendard, "Forma DJR Micro", Inter,
-      -apple-system, BlinkMacSystemFont, system-ui, "Helvetica Neue", Arial,
-      "Noto Sans KR", sans-serif;
-    font-feature-settings: "ss01", "ss02";
-    font-synthesis: none;
-    text-rendering: optimizeLegibility;
+    font-family: "Pretendard Variable", Pretendard, -apple-system,
+      BlinkMacSystemFont, system-ui, "Helvetica Neue", "Noto Sans KR",
+      sans-serif;
+    font-size: 13px;
+    line-height: 1.45;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    line-height: 1.4;
+    text-rendering: optimizeLegibility;
   }
 
   ::selection {
-    background-color: var(--color-primary-soft);
-    color: var(--color-ink);
+    background-color: var(--color-azure-soft);
+    color: var(--color-text-primary);
+  }
+
+  /* Scrollbars — minimal, blend with canvas */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-surface-3);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-faint);
   }
 }
 
-/* ========================================================================
-   HP typography utilities — direct mapping to DESIGN.md typography tokens.
-   Use display-* for headlines, body-* for paragraphs, button-* for CTAs.
-   ======================================================================== */
+/* ============================================================================
+   .num — JetBrains Mono helper for any numeral the user reads.
+============================================================================ */
 
-@utility hp-display-xxl {
-  font-size: 72px;
-  font-weight: 500;
-  line-height: 1;
-  letter-spacing: -0.01em;
+.num {
+  font-family: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas,
+    monospace;
+  font-feature-settings: "tnum", "zero";
+  font-variant-numeric: tabular-nums;
 }
-@utility hp-display-xl {
-  font-size: 56px;
-  font-weight: 500;
-  line-height: 1;
-  letter-spacing: -0.01em;
+
+/* ============================================================================
+   Madup Console (mc-*) component utilities.
+============================================================================ */
+
+@utility mc-card {
+  position: relative;
+  background-color: var(--color-surface-1);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-hairline);
+  padding: 20px;
+  overflow: hidden;
 }
-@utility hp-display-lg {
-  font-size: 44px;
-  font-weight: 500;
-  line-height: 1;
-  letter-spacing: -0.005em;
+@utility mc-card {
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 60%;
+    background: linear-gradient(
+      180deg,
+      var(--color-inner-highlight) 0%,
+      transparent 100%
+    );
+    pointer-events: none;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  }
 }
-@utility hp-display-md {
-  font-size: 32px;
-  font-weight: 500;
-  line-height: 1;
+
+@utility mc-card-elevated {
+  position: relative;
+  background-color: var(--color-surface-2);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-hairline);
+  padding: 20px;
+  overflow: hidden;
 }
-@utility hp-display-sm {
-  font-size: 24px;
-  font-weight: 500;
-  line-height: 1.17;
+
+@utility mc-card-feature {
+  position: relative;
+  background-color: var(--color-surface-1);
+  border-radius: var(--radius-xxl);
+  border: 1px solid var(--color-hairline);
+  padding: 28px;
+  overflow: hidden;
 }
-@utility hp-display-xs {
-  font-size: 20px;
-  font-weight: 500;
-  line-height: 1;
+@utility mc-card-feature {
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 60%;
+    background: linear-gradient(
+      180deg,
+      var(--color-inner-highlight) 0%,
+      transparent 100%
+    );
+    pointer-events: none;
+    border-radius: var(--radius-xxl) var(--radius-xxl) 0 0;
+  }
 }
-@utility hp-body-lg {
-  font-size: 18px;
-  font-weight: 400;
-  line-height: 1.33;
-}
-@utility hp-body {
-  font-size: 16px;
-  font-weight: 400;
-  line-height: 1.4;
-}
-@utility hp-body-emphasis {
-  font-size: 16px;
-  font-weight: 500;
-  line-height: 1.4;
-}
-@utility hp-caption {
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 1.5;
-}
-@utility hp-caption-bold {
-  font-size: 14px;
+
+@utility mc-eyebrow {
+  font-size: 10.5px;
   font-weight: 700;
-  line-height: 1.3;
-}
-@utility hp-caption-sm {
-  font-size: 12px;
-  font-weight: 400;
-  line-height: 1.33;
-}
-@utility hp-button-label {
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.4;
-  letter-spacing: 0.7px;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
 }
-@utility hp-button-label-sm {
-  font-size: 12.6px;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: 0.126px;
-  text-transform: uppercase;
-}
-@utility hp-price {
-  font-size: 24px;
+
+@utility mc-kpi-numeral {
+  font-family: "JetBrains Mono", "SF Mono", ui-monospace, monospace;
+  font-feature-settings: "tnum", "zero";
+  font-variant-numeric: tabular-nums;
+  font-size: 48px;
   font-weight: 500;
-  line-height: 1.17;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--color-azure);
 }
 
-/* ========================================================================
-   Component utilities — re-usable HP component skins.
-   ======================================================================== */
-
-@utility hp-btn-primary {
+@utility mc-btn-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  height: 44px;
-  padding: 0 24px;
-  border-radius: 4px;
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
-  font-size: 14px;
+  height: 34px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background-color: var(--color-azure);
+  color: var(--color-text-on-accent);
+  font-family: inherit;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.7px;
-  text-transform: uppercase;
-  transition: background-color 150ms ease;
+  white-space: nowrap;
   cursor: pointer;
+  transition: background 140ms ease;
 }
-@utility hp-btn-primary {
+@utility mc-btn-primary {
   &:hover {
-    background-color: var(--color-primary-bright);
+    background-color: var(--color-azure-bright);
   }
   &:active {
-    background-color: var(--color-primary-deep);
+    background-color: var(--color-azure-deep);
   }
   &:disabled {
-    background-color: var(--color-steel);
+    background-color: var(--color-surface-3);
+    color: var(--color-text-faint);
     cursor: not-allowed;
   }
 }
 
-@utility hp-btn-ink {
+@utility mc-btn-outline {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  height: 44px;
-  padding: 0 24px;
-  border-radius: 4px;
-  background-color: var(--color-ink);
-  color: var(--color-on-ink);
-  font-size: 14px;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--color-hairline-strong);
+  border-radius: var(--radius-md);
+  background-color: transparent;
+  color: var(--color-text-primary);
+  font-family: inherit;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.7px;
-  text-transform: uppercase;
-  transition: background-color 150ms ease;
+  white-space: nowrap;
   cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease;
 }
-@utility hp-btn-ink {
+@utility mc-btn-outline {
   &:hover {
-    background-color: var(--color-ink-soft);
-  }
-  &:disabled {
-    background-color: var(--color-steel);
-    cursor: not-allowed;
+    border-color: var(--color-text-tertiary);
+    background-color: var(--color-surface-2);
   }
 }
 
-@utility hp-btn-outline {
+@utility mc-btn-ghost {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  height: 44px;
-  padding: 0 24px;
-  border-radius: 4px;
-  background-color: var(--color-canvas);
-  color: var(--color-primary);
-  border: 1px solid var(--color-primary);
-  font-size: 14px;
+  height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  font-family: inherit;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.7px;
-  text-transform: uppercase;
-  transition: all 150ms ease;
+  white-space: nowrap;
   cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
 }
-@utility hp-btn-outline {
+@utility mc-btn-ghost {
   &:hover {
-    background-color: var(--color-primary-soft);
-  }
-  &:disabled {
-    color: var(--color-steel);
-    border-color: var(--color-steel);
-    cursor: not-allowed;
+    background-color: var(--color-surface-2);
+    color: var(--color-text-primary);
   }
 }
 
-@utility hp-btn-outline-ink {
+@utility mc-icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  height: 44px;
-  padding: 0 24px;
-  border-radius: 4px;
-  background-color: var(--color-canvas);
-  color: var(--color-ink);
-  border: 1px solid var(--color-ink);
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.7px;
-  text-transform: uppercase;
-  transition: all 150ms ease;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  color: var(--color-text-tertiary);
   cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
 }
-@utility hp-btn-outline-ink {
+@utility mc-icon-btn {
   &:hover {
-    background-color: var(--color-cloud);
+    background-color: var(--color-surface-2);
+    color: var(--color-text-secondary);
   }
 }
 
-@utility hp-card {
-  background-color: var(--color-canvas);
-  border-radius: 16px;
-  border: 1px solid var(--color-hairline);
-  box-shadow: 0 2px 8px rgba(26, 26, 26, 0.06);
-}
-
-@utility hp-card-flat {
-  background-color: var(--color-canvas);
-  border-radius: 16px;
-  border: 1px solid var(--color-hairline);
-}
-
-@utility hp-card-cloud {
-  background-color: var(--color-cloud);
-  border-radius: 16px;
-  border: 1px solid transparent;
-}
-
-@utility hp-card-ink {
-  background-color: var(--color-ink);
-  color: var(--color-on-ink);
-  border-radius: 16px;
-}
-
-@utility hp-input {
-  height: 44px;
-  padding: 0 16px;
-  border-radius: 4px;
-  background-color: var(--color-canvas);
-  color: var(--color-ink);
-  border: 1px solid var(--color-steel);
-  font-size: 16px;
-  transition: border-color 150ms ease;
-  outline: none;
-}
-@utility hp-input {
-  &:focus {
-    border-color: var(--color-ink);
-  }
-  &::placeholder {
-    color: var(--color-graphite);
-  }
-}
-
-@utility hp-pill {
+@utility mc-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 20px;
-  border-radius: 9999px;
-  background-color: var(--color-canvas);
-  color: var(--color-ink);
-  border: 1px solid var(--color-hairline);
-  font-size: 14px;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-surface-2);
+  color: var(--color-text-secondary);
+  font-size: 11px;
   font-weight: 500;
-  transition: all 150ms ease;
+  white-space: nowrap;
+}
+
+@utility mc-pill-success {
+  background-color: var(--color-lime-soft);
+  color: var(--color-lime);
+}
+
+@utility mc-pill-warning {
+  background-color: var(--color-amber-soft);
+  color: var(--color-amber);
+}
+
+@utility mc-pill-danger {
+  background-color: var(--color-coral-soft);
+  color: var(--color-coral);
+}
+
+@utility mc-stat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface-2);
+  color: var(--color-text-primary);
+  font-family: "JetBrains Mono", "SF Mono", ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+@utility mc-delta-up {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-lime-soft);
+  color: var(--color-lime);
+  font-family: "JetBrains Mono", "SF Mono", ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+@utility mc-delta-down {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-coral-soft);
+  color: var(--color-coral);
+  font-family: "JetBrains Mono", "SF Mono", ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+@utility mc-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface-2);
+  color: var(--color-text-primary);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
   cursor: pointer;
 }
-@utility hp-pill {
-  &:hover {
-    border-color: var(--color-ink);
+
+@utility mc-input {
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface-2);
+  color: var(--color-text-primary);
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 140ms ease;
+}
+@utility mc-input {
+  &:focus {
+    border-color: var(--color-azure);
+  }
+  &::placeholder {
+    color: var(--color-text-faint);
   }
 }
 
-@utility hp-pill-active {
-  background-color: var(--color-ink);
-  color: var(--color-on-ink);
-  border-color: var(--color-ink);
+@utility mc-segmented {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 2px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface-2);
 }
 
-@utility hp-badge-coral {
+@utility mc-segmented-item {
   display: inline-flex;
-  padding: 4px 8px;
-  border-radius: 3px;
-  background-color: var(--color-bloom-coral);
-  color: var(--color-on-primary);
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1.3;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-
-@utility hp-badge-soft {
-  display: inline-flex;
-  padding: 4px 10px;
-  border-radius: 8px;
-  background-color: var(--color-primary-soft);
-  color: var(--color-primary-deep);
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  font-family: inherit;
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+@utility mc-segmented-item {
+  &.active,
+  &[data-active="true"] {
+    background-color: var(--color-azure);
+    color: var(--color-text-on-accent);
+  }
 }
 
-@utility hp-utility-strip {
-  height: 36px;
-  padding: 0 24px;
-  background-color: var(--color-ink);
-  color: var(--color-on-ink);
+@utility mc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-pill);
+  background-color: var(--color-surface-2);
+  color: var(--color-text-secondary);
+  font-family: inherit;
   font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+@utility mc-chip {
+  &:hover {
+    color: var(--color-text-primary);
+  }
+  &.active,
+  &[data-active="true"] {
+    background-color: var(--color-azure-soft);
+    color: var(--color-azure-bright);
+    border-color: rgba(77, 163, 255, 0.3);
+  }
+}
+
+@utility mc-nav-item {
   display: flex;
   align-items: center;
+  gap: 10px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
 }
-
-/* HP chevron decoration — angular blue parallelograms anchoring hero bands. */
-@utility hp-chevron {
-  background-color: var(--color-primary);
-  transform: skewX(-18deg);
-  border-radius: 0;
-}
-
-@utility hp-eyebrow {
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: var(--color-primary);
+@utility mc-nav-item {
+  &:hover {
+    background-color: var(--color-surface-2);
+    color: var(--color-text-primary);
+  }
+  &.active,
+  &[data-active="true"] {
+    background-color: var(--color-azure-soft);
+    color: var(--color-azure-bright);
+  }
 }

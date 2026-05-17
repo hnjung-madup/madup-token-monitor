@@ -1,28 +1,23 @@
 import { useEffect, useRef } from "react";
-import { BrowserRouter, Routes, Route, NavLink, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { QueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
-import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { onOpenUrl, getCurrent } from "@tauri-apps/plugin-deep-link";
 import "@/i18n/index";
 import { Dashboard } from "@/pages/Dashboard";
-import MCP from "@/pages/MCP";
-import Plugins from "@/pages/Plugins";
-import Leaderboard from "@/pages/Leaderboard";
-import Chat from "@/pages/Chat";
+import CompanyDashboard from "@/pages/CompanyDashboard";
 import Settings from "@/pages/Settings";
 import Login from "@/pages/Login";
-import Profile from "@/pages/Profile";
 import { AuthGuard } from "@/lib/AuthGuard";
 import { handleAuthCallback, syncAggregatesNow } from "@/lib/auth";
 import { supabase, getProfile } from "@/lib/supabase";
-import { signOut } from "@/lib/supabase";
-import { useAuthUser } from "@/hooks/useAuthUser";
+import { Sidebar } from "@/components/layout/Sidebar";
+import { TitleBar } from "@/components/layout/TitleBar";
 
 // 캐시를 localStorage에 영속화 — 앱 재시작 시 옛 데이터를 즉시 표시하고 백그라운드 refetch.
-// MCP / 사용량 페이지가 cold start에 즉시 보이도록 하는 핵심.
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -37,150 +32,27 @@ const persister = createSyncStoragePersister({
   key: "madup-token-monitor:rq",
 });
 
-const NAV_ITEMS = [
-  { path: "/", label: "nav.dashboard" },
-  { path: "/mcp", label: "nav.mcp" },
-  { path: "/plugins", label: "nav.plugins" },
-  { path: "/leaderboard", label: "nav.leaderboard" },
-  { path: "/chat", label: "nav.chat" },
-  { path: "/settings", label: "nav.settings" },
-] as const;
-
-function MadupMark({ size = 28 }: { size?: number }) {
-  return (
-    <img
-      src="/madup-favicon.png"
-      alt="Madup"
-      width={size}
-      height={size}
-      draggable={false}
-      className="shrink-0"
-    />
-  );
-}
-
-// 메뉴바 popover — 상단 헤더는 로고 + 액션 아이콘.
-// macOS popover 윈도우는 트레이 위치에 고정되어 보여주는 것이 자연스러워
-// 윈도우 드래그 이동은 의도적으로 비활성화 (data-tauri-drag-region 없음).
-function PopoverHeader() {
-  const { user } = useAuthUser();
-  const navigate = useNavigate();
-
-  async function handleSignOut() {
-    await signOut();
-    navigate("/login", { replace: true });
-  }
-
-  return (
-    <header className="flex items-center justify-between px-3 py-2 border-b border-hairline bg-canvas select-none">
-      <div className="flex items-center gap-2 min-w-0">
-        <MadupMark size={22} />
-        <div className="leading-tight min-w-0">
-          <p className="text-[12px] font-semibold text-ink truncate">
-            매드업 토큰 모니터
-          </p>
-          <p className="text-[10px] text-graphite truncate">
-            {user?.email ?? "로그인 필요"}
-          </p>
-        </div>
-      </div>
-      <div className="flex items-center gap-1 shrink-0">
-        <button
-          onClick={() => navigate("/settings")}
-          title="설정"
-          className="w-7 h-7 rounded-md hover:bg-cloud transition-colors flex items-center justify-center text-graphite hover:text-ink"
-        >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-            <path
-              d="M8 5.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5z"
-              stroke="currentColor"
-              strokeWidth="1.3"
-            />
-            <path
-              d="M13.5 8c0-.4-.04-.78-.12-1.16l1.4-1.07-1.5-2.6-1.66.62a5.5 5.5 0 00-2.02-1.16L9.3 1H6.7l-.3 1.63a5.5 5.5 0 00-2.02 1.16l-1.66-.62-1.5 2.6 1.4 1.07A5.6 5.6 0 002.5 8c0 .4.04.78.12 1.16l-1.4 1.07 1.5 2.6 1.66-.62a5.5 5.5 0 002.02 1.16L6.7 15h2.6l.3-1.63a5.5 5.5 0 002.02-1.16l1.66.62 1.5-2.6-1.4-1.07c.08-.38.12-.76.12-1.16z"
-              stroke="currentColor"
-              strokeWidth="1.3"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
-        {user && (
-          <button
-            onClick={handleSignOut}
-            title="로그아웃"
-            className="w-7 h-7 rounded-md hover:bg-cloud transition-colors flex items-center justify-center text-graphite hover:text-ink"
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-              <path
-                d="M6 3H3v10h3M10 5l3 3-3 3M13 8H6"
-                stroke="currentColor"
-                strokeWidth="1.3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-        )}
-      </div>
-    </header>
-  );
-}
-
-function TabBar() {
-  const { t } = useTranslation();
-  return (
-    <nav className="flex border-b border-hairline bg-canvas">
-      {NAV_ITEMS.filter((item) => item.path !== "/settings").map((item) => (
-        <NavLink
-          key={item.path}
-          to={item.path}
-          end={item.path === "/"}
-          className={({ isActive }) =>
-            `flex-1 text-center py-2 text-[12px] font-semibold transition-colors relative ${
-              isActive
-                ? "text-ink"
-                : "text-graphite hover:text-ink"
-            }`
-          }
-        >
-          {({ isActive }) => (
-            <>
-              <span>{t(item.label)}</span>
-              {isActive && (
-                <span className="absolute left-3 right-3 bottom-0 h-[2px] bg-primary rounded-full" />
-              )}
-            </>
-          )}
-        </NavLink>
-      ))}
-    </nav>
-  );
-}
-
 function Layout() {
   return (
     <AuthGuard>
-      <div className="flex flex-col h-screen overflow-hidden bg-canvas">
-        <PopoverHeader />
-        <TabBar />
-        <main className="flex-1 overflow-y-auto bg-cloud">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/mcp" element={<MCP />} />
-            <Route path="/plugins" element={<Plugins />} />
-            <Route path="/leaderboard" element={<Leaderboard />} />
-            <Route path="/chat" element={<Chat />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/settings/profile" element={<Profile />} />
-          </Routes>
-        </main>
+      <div className="flex flex-col h-screen overflow-hidden bg-canvas text-text-primary">
+        <TitleBar />
+        <div className="flex flex-1 min-h-0 overflow-hidden">
+          <Sidebar />
+          <main className="flex-1 overflow-y-auto min-w-0">
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/team" element={<CompanyDashboard />} />
+              <Route path="/settings" element={<Settings />} />
+            </Routes>
+          </main>
+        </div>
       </div>
     </AuthGuard>
   );
 }
 
 /// share_consent=true 인 경우 1시간마다 사내 집계 sync. 로그인되어 있어야 호출됨.
-/// 본인 데이터만 본인 access_token으로 업로드 (RLS WITH CHECK가 보장).
 function AggregateSyncDriver() {
   useEffect(() => {
     let cancelled = false;
@@ -200,7 +72,6 @@ function AggregateSyncDriver() {
       }
     }
 
-    // 시작 후 5초 뒤 첫 sync (cold start 충돌 회피), 이후 60분마다.
     const initial = setTimeout(runOnce, 5_000);
     interval = setInterval(runOnce, 60 * 60 * 1000);
 
@@ -213,12 +84,54 @@ function AggregateSyncDriver() {
   return null;
 }
 
+/// 키보드 단축키:
+///   - ⌘W (mac) / Ctrl+W (win/linux) → 윈도우 hide (트레이로 복귀)
+/// `decorations:false` 라 native menu accelerator 가 없으므로 JS 에서 직접 처리.
+function KeyboardShortcuts() {
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && (e.key === "w" || e.key === "W")) {
+        e.preventDefault();
+        // Tauri 외부(웹 미리보기) 에서는 무시.
+        if (!("__TAURI_INTERNALS__" in window)) return;
+        getCurrentWindow().close().catch(() => {});
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+  return null;
+}
+
+/// 인증 첫 체크가 끝나면 윈도우를 표시.
+/// `tauri.conf.json` 에서 visible:false 로 띄운 뒤, AuthGuard 가 결정한 첫 paint
+/// (Login or Dashboard) 가 준비됐을 때만 show() → "Dashboard 가 잠깐 보였다가
+/// Login 으로 이동하는" 깜빡임 제거.
+function ShowWindowOnReady() {
+  useEffect(() => {
+    if (!("__TAURI_INTERNALS__" in window)) return;
+    let shown = false;
+    function showOnce() {
+      if (shown) return;
+      shown = true;
+      const w = getCurrentWindow();
+      w.show().catch(() => {});
+      w.setFocus().catch(() => {});
+    }
+    // 인증 체크 완료 후 show.
+    supabase.auth.getSession().finally(showOnce);
+    // 안전망: 1.2 초 안에 무조건 show (네트워크 hang 등으로 getSession 이 늦게 도착해도
+    // 사용자가 빈 macOS dock 만 보는 일은 없게).
+    const safety = setTimeout(showOnce, 1200);
+    return () => clearTimeout(safety);
+  }, []);
+  return null;
+}
+
 function DeepLinkBridge() {
   const navigate = useNavigate();
-  // navigate 는 react-router context 가 바뀔 때마다 새 ref 가 될 수 있음.
-  // useEffect 의 dep 으로 두면 location 변경마다 재실행되어 getCurrent() 가
-  // 같은 OAuth URL 을 반복 처리, 사용자가 탭을 이동할 때마다 navigate("/") 로
-  // 끌려가는 버그가 발생. ref 로 우회하고 deps 는 비워 mount 시 1회만 등록.
+  // navigate ref 우회 + deps=[] — 라우트 변경마다 재실행되지 않도록.
   const navigateRef = useRef(navigate);
   navigateRef.current = navigate;
 
@@ -227,26 +140,38 @@ function DeepLinkBridge() {
     const processed = new Set<string>();
 
     async function processUrl(url: string | null | undefined) {
-      if (!url || !url.startsWith("madup-token-monitor://auth/callback")) return;
-      if (processed.has(url)) return;
+      console.info("[deep-link] processUrl received:", url);
+      if (!url || !url.startsWith("madup-token-monitor://auth/callback")) {
+        console.info("[deep-link] skipping (no match)");
+        return;
+      }
+      if (processed.has(url)) {
+        console.info("[deep-link] already processed");
+        return;
+      }
       processed.add(url);
-      // popover 는 외부 브라우저로 포커스가 옮겨간 순간 자동 hide 됐을 가능성이 높다.
-      // deep-link 가 도착하면 인증 결과와 무관하게 윈도우를 다시 띄워 사용자가
-      // 로그인 결과(혹은 에러) 를 볼 수 있게 한다.
       invoke("show_main_window").catch(() => {});
       const ok = await handleAuthCallback(url);
+      console.info("[deep-link] handleAuthCallback ->", ok);
       if (ok) navigateRef.current("/", { replace: true });
     }
 
     getCurrent()
-      .then((urls) => processUrl(urls?.[0]))
-      .catch(() => {});
+      .then((urls) => {
+        console.info("[deep-link] getCurrent on mount:", urls);
+        processUrl(urls?.[0]);
+      })
+      .catch((e) => console.warn("[deep-link] getCurrent failed:", e));
 
-    onOpenUrl((urls) => processUrl(urls?.[0]))
+    onOpenUrl((urls) => {
+      console.info("[deep-link] onOpenUrl event:", urls);
+      processUrl(urls?.[0]);
+    })
       .then((u) => {
+        console.info("[deep-link] onOpenUrl listener registered");
         unlisten = u;
       })
-      .catch(() => {});
+      .catch((e) => console.warn("[deep-link] onOpenUrl register failed:", e));
 
     return () => unlisten?.();
   }, []);
@@ -260,6 +185,8 @@ export default function App() {
       persistOptions={{ persister, maxAge: 1000 * 60 * 60 * 24 * 7 }}
     >
       <BrowserRouter>
+        <KeyboardShortcuts />
+        <ShowWindowOnReady />
         <DeepLinkBridge />
         <AggregateSyncDriver />
         <Routes>

@@ -1,460 +1,514 @@
 ---
 version: alpha
-name: HP Inspired
-description: An inspired interpretation of HP's design language — a white-paper enterprise-consumer system anchored by HP Electric Blue (`#024ad8`) as the lone signal CTA, near-black ink (`#1a1a1a`) for headlines, geometric Forma-DJR sans throughout, and angular blue-chevron decorations that nod to the HP wordmark's slashes. Cards round at 8–16px, photos sit in soft 16px frames, and dark navy slabs anchor the customer-story and "how can we help" closing bands.
+name: Madup Console
+description: A dark operator-console design system for the Madup Token Monitor. A near-black indigo canvas anchors elevated glass cards, with electric-azure as the lone interactive accent and a four-light signal palette (lime / amber / coral / violet) for status. Pretendard handles Korean copy; JetBrains Mono carries every numeric. Cards round at 14px, sit on hairline inner-highlights, and surface KPIs as oversized mono numerals over micro-sparklines.
 
 colors:
-  primary: "#024ad8"
-  primary-bright: "#296ef9"
-  primary-deep: "#0e3191"
-  primary-soft: "#c9e0fc"
-  on-primary: "#ffffff"
-  ink: "#1a1a1a"
-  ink-deep: "#000000"
-  ink-soft: "#292929"
-  on-ink: "#ffffff"
-  canvas: "#ffffff"
-  paper: "#ffffff"
-  cloud: "#f7f7f7"
-  fog: "#e8e8e8"
-  steel: "#c2c2c2"
-  graphite: "#636363"
-  charcoal: "#3d3d3d"
-  hairline: "#e8e8e8"
-  hairline-strong: "#c2c2c2"
-  link: "#024ad8"
-  link-pressed: "#0e3191"
-  bloom-coral: "#ff5050"
-  bloom-rose: "#f9d4d2"
-  bloom-deep: "#b3262b"
-  bloom-wine: "#5a1313"
-  storm-mist: "#8ebdce"
-  storm-sea: "#7fadbe"
-  storm-deep: "#356373"
-  error: "#b3262b"
+  # Base canvas — deep indigo near-black; reads as a console window backdrop
+  canvas-deep: "#070B17"
+  canvas: "#0B1126"
+  canvas-soft: "#11183A"
+  vignette: "#1A2350"
+
+  # Card surfaces — graduated from base toward elevated
+  surface-1: "#121A33"
+  surface-2: "#19233F"
+  surface-3: "#22304D"
+  surface-glass: "rgba(255,255,255,0.04)"
+
+  # Borders & dividers — alpha so they sit cleanly over any surface tier
+  hairline: "rgba(255,255,255,0.06)"
+  hairline-strong: "rgba(255,255,255,0.12)"
+  inner-highlight: "rgba(255,255,255,0.05)"
+  outer-glow: "rgba(8,12,28,0.6)"
+
+  # Type colors
+  text-primary: "#E7ECF7"
+  text-secondary: "#9CA8C5"
+  text-tertiary: "#6A7593"
+  text-faint: "#454E6A"
+  text-on-accent: "#06122B"
+
+  # Primary accent — Madup Electric Azure
+  azure: "#4DA3FF"
+  azure-bright: "#7BBCFF"
+  azure-deep: "#2C7BE5"
+  azure-soft: "rgba(77,163,255,0.14)"
+  azure-glow: "rgba(77,163,255,0.35)"
+
+  # Signal palette — status semantics
+  lime: "#9BE15D"
+  lime-deep: "#6CB23B"
+  lime-soft: "rgba(155,225,93,0.14)"
+  amber: "#F5B544"
+  amber-deep: "#C88A1C"
+  amber-soft: "rgba(245,181,68,0.14)"
+  coral: "#FF6B5C"
+  coral-deep: "#D43F2E"
+  coral-soft: "rgba(255,107,92,0.14)"
+  violet: "#B68CFF"
+  violet-deep: "#8358D9"
+  violet-soft: "rgba(182,140,255,0.14)"
+
+  # Semantic aliases
+  success: "#9BE15D"
+  warning: "#F5B544"
+  danger: "#FF6B5C"
+  info: "#4DA3FF"
 
 typography:
   display-xxl:
-    fontFamily: Forma DJR Micro
-    fontSize: 72px
+    fontFamily: JetBrains Mono
+    fontSize: 64px
     fontWeight: 500
     lineHeight: 1.0
-    letterSpacing: 0
+    letterSpacing: -0.02em
   display-xl:
-    fontFamily: Forma DJR Micro
-    fontSize: 56px
+    fontFamily: JetBrains Mono
+    fontSize: 48px
     fontWeight: 500
     lineHeight: 1.0
-    letterSpacing: 0
+    letterSpacing: -0.02em
   display-lg:
-    fontFamily: Forma DJR Micro
-    fontSize: 44px
+    fontFamily: JetBrains Mono
+    fontSize: 36px
     fontWeight: 500
-    lineHeight: 1.0
-    letterSpacing: 0
+    lineHeight: 1.05
+    letterSpacing: -0.01em
   display-md:
-    fontFamily: Forma DJR Micro
-    fontSize: 32px
+    fontFamily: JetBrains Mono
+    fontSize: 28px
     fontWeight: 500
-    lineHeight: 1.0
-    letterSpacing: 0
+    lineHeight: 1.1
+    letterSpacing: -0.01em
   display-sm:
-    fontFamily: Forma DJR Micro
-    fontSize: 24px
-    fontWeight: 500
-    lineHeight: 1.17
-    letterSpacing: 0
-  display-xs:
-    fontFamily: Forma DJR Micro
+    fontFamily: JetBrains Mono
     fontSize: 20px
     fontWeight: 500
-    lineHeight: 1.0
+    lineHeight: 1.2
+    letterSpacing: 0
+  heading-lg:
+    fontFamily: Pretendard
+    fontSize: 18px
+    fontWeight: 600
+    lineHeight: 1.3
+    letterSpacing: -0.005em
+  heading-md:
+    fontFamily: Pretendard
+    fontSize: 16px
+    fontWeight: 600
+    lineHeight: 1.3
+    letterSpacing: 0
+  heading-sm:
+    fontFamily: Pretendard
+    fontSize: 14px
+    fontWeight: 600
+    lineHeight: 1.3
     letterSpacing: 0
   body-lg:
-    fontFamily: Forma DJR Micro
-    fontSize: 18px
-    fontWeight: 400
-    lineHeight: 1.33
-    letterSpacing: 0
-  body-md:
-    fontFamily: Forma DJR Micro
-    fontSize: 16px
-    fontWeight: 400
-    lineHeight: 1.38
-    letterSpacing: 0
-  body-emphasis:
-    fontFamily: Forma DJR Micro
-    fontSize: 16px
-    fontWeight: 500
-    lineHeight: 1.38
-    letterSpacing: 0
-  caption-md:
-    fontFamily: Forma DJR Micro
-    fontSize: 14px
+    fontFamily: Pretendard
+    fontSize: 15px
     fontWeight: 400
     lineHeight: 1.5
     letterSpacing: 0
-  caption-sm:
-    fontFamily: Forma DJR Micro
+  body-md:
+    fontFamily: Pretendard
+    fontSize: 13px
+    fontWeight: 400
+    lineHeight: 1.45
+    letterSpacing: 0
+  body-emphasis:
+    fontFamily: Pretendard
+    fontSize: 13px
+    fontWeight: 500
+    lineHeight: 1.45
+    letterSpacing: 0
+  caption-md:
+    fontFamily: Pretendard
     fontSize: 12px
     fontWeight: 400
-    lineHeight: 1.33
+    lineHeight: 1.4
     letterSpacing: 0
-  caption-bold:
-    fontFamily: Forma DJR Micro
-    fontSize: 14px
-    fontWeight: 700
+  caption-sm:
+    fontFamily: Pretendard
+    fontSize: 11px
+    fontWeight: 500
     lineHeight: 1.3
     letterSpacing: 0
-  link-md:
-    fontFamily: Forma DJR Micro
-    fontSize: 16px
-    fontWeight: 500
-    lineHeight: 1.38
-    letterSpacing: 0
-  button-md:
-    fontFamily: Forma DJR Micro
-    fontSize: 14px
-    fontWeight: 600
-    lineHeight: 1.4
-    letterSpacing: 0.7px
-    textTransform: uppercase
-  button-sm:
-    fontFamily: Forma DJR Micro
-    fontSize: 12.6px
+  eyebrow:
+    fontFamily: Pretendard
+    fontSize: 10.5px
     fontWeight: 700
     lineHeight: 1.0
-    letterSpacing: 0.126px
-  price-md:
-    fontFamily: Forma DJR Micro
-    fontSize: 24px
+    letterSpacing: 0.16em
+    textTransform: uppercase
+  numeric-lg:
+    fontFamily: JetBrains Mono
+    fontSize: 22px
     fontWeight: 500
-    lineHeight: 1.17
+    lineHeight: 1.1
+    letterSpacing: 0
+  numeric-md:
+    fontFamily: JetBrains Mono
+    fontSize: 14px
+    fontWeight: 500
+    lineHeight: 1.2
+    letterSpacing: 0
+  numeric-sm:
+    fontFamily: JetBrains Mono
+    fontSize: 12px
+    fontWeight: 500
+    lineHeight: 1.2
+    letterSpacing: 0
+  mono-tag:
+    fontFamily: JetBrains Mono
+    fontSize: 11px
+    fontWeight: 500
+    lineHeight: 1.0
+    letterSpacing: 0.04em
+  button-md:
+    fontFamily: Pretendard
+    fontSize: 13px
+    fontWeight: 600
+    lineHeight: 1.0
+    letterSpacing: 0
+  button-sm:
+    fontFamily: Pretendard
+    fontSize: 12px
+    fontWeight: 600
+    lineHeight: 1.0
     letterSpacing: 0
 
 rounded:
   none: 0px
-  xs: 2px
-  sm: 3px
-  md: 4px
-  lg: 8px
-  xl: 16px
+  xs: 4px
+  sm: 6px
+  md: 8px
+  lg: 10px
+  xl: 14px
+  xxl: 20px
   pill: 9999px
-  full: 9999px
 
 spacing:
+  px: 1px
   xxs: 4px
-  xs: 8px
-  sm: 12px
-  md: 16px
-  lg: 20px
-  xl: 24px
-  xxl: 32px
-  section: 80px
+  xs: 6px
+  sm: 8px
+  md: 12px
+  lg: 16px
+  xl: 20px
+  xxl: 28px
+  xxxl: 40px
+  section: 56px
 
 components:
-  button-primary:
-    backgroundColor: "{colors.primary}"
-    textColor: "{colors.on-primary}"
-    typography: "{typography.button-md}"
-    rounded: "{rounded.md}"
-    padding: 12px 24px
-    height: 44px
-  button-primary-pressed:
-    backgroundColor: "{colors.primary-deep}"
-    textColor: "{colors.on-primary}"
-  button-primary-disabled:
-    backgroundColor: "{colors.steel}"
-    textColor: "{colors.on-primary}"
-  button-ink:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.on-primary}"
-    typography: "{typography.button-md}"
-    rounded: "{rounded.md}"
-    padding: 12px 24px
-    height: 44px
-  button-outline:
+  window-shell:
     backgroundColor: "{colors.canvas}"
-    textColor: "{colors.primary}"
-    typography: "{typography.button-md}"
-    rounded: "{rounded.md}"
-    padding: 12px 24px
-    height: 44px
-  button-outline-ink:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    typography: "{typography.button-md}"
-    rounded: "{rounded.md}"
-    padding: 12px 24px
-    height: 44px
-  button-text-link:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.primary}"
-    typography: "{typography.link-md}"
-    padding: 4px 0
-  badge-pill-ink:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.on-primary}"
-    typography: "{typography.body-md}"
-    rounded: "{rounded.lg}"
-    padding: 6px 12px
-  badge-pill-outline:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    typography: "{typography.body-md}"
-    rounded: "{rounded.lg}"
-    padding: 6px 12px
-  badge-sale-coral:
-    backgroundColor: "{colors.bloom-coral}"
-    textColor: "{colors.on-primary}"
-    typography: "{typography.caption-bold}"
-    rounded: "{rounded.sm}"
-    padding: 4px 8px
-  text-input:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    typography: "{typography.body-md}"
-    rounded: "{rounded.md}"
-    padding: 12px 16px
-    height: 44px
-  text-input-focused:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-  text-input-search:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    typography: "{typography.body-md}"
-    rounded: "{rounded.md}"
-    padding: 12px 16px
-    height: 40px
-  card-product:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.xl}"
-    padding: 24px
-  card-product-feature:
-    backgroundColor: "{colors.cloud}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.xl}"
-    padding: 32px
-  card-pricing-tier:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.xl}"
-    padding: 24px
-  card-pricing-tier-featured:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.xl}"
-    padding: 24px
-  card-customer-story:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.xl}"
-    padding: 16px
-  card-article-tile:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.xl}"
-    padding: 16px
-  card-category-icon:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    typography: "{typography.body-emphasis}"
-    rounded: "{rounded.lg}"
-    padding: 16px
-  promo-strip-dark:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.on-primary}"
-    typography: "{typography.body-md}"
-    rounded: "{rounded.xl}"
-    padding: 48px
-  hero-promo-card:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.xl}"
-    padding: 32px
-  utility-strip:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.on-primary}"
+    textColor: "{colors.text-primary}"
+    rounded: "{rounded.xxl}"
+  title-bar:
+    backgroundColor: "transparent"
+    textColor: "{colors.text-secondary}"
     typography: "{typography.caption-md}"
     height: 36px
-    padding: 0 24px
-  nav-bar-top:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    typography: "{typography.body-md}"
-    height: 64px
-    padding: 0 32px
-  nav-link:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    typography: "{typography.body-md}"
-    padding: 8px 16px
-  category-tab:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    typography: "{typography.body-emphasis}"
+    padding: 0 {spacing.lg}
+  sidebar-rail:
+    backgroundColor: "rgba(7,11,23,0.6)"
+    textColor: "{colors.text-secondary}"
+    width: 224px
+    padding: "{spacing.xl} {spacing.md}"
+  nav-item:
+    backgroundColor: "transparent"
+    textColor: "{colors.text-secondary}"
+    typography: "{typography.heading-sm}"
+    rounded: "{rounded.md}"
+    padding: "{spacing.sm} {spacing.md}"
+    height: 36px
+  nav-item-active:
+    backgroundColor: "{colors.azure-soft}"
+    textColor: "{colors.azure-bright}"
+    rounded: "{rounded.md}"
+  card:
+    backgroundColor: "{colors.surface-1}"
+    textColor: "{colors.text-primary}"
+    rounded: "{rounded.xl}"
+    padding: "{spacing.xl}"
+  card-elevated:
+    backgroundColor: "{colors.surface-2}"
+    textColor: "{colors.text-primary}"
+    rounded: "{rounded.xl}"
+    padding: "{spacing.xl}"
+  card-feature:
+    backgroundColor: "{colors.surface-1}"
+    textColor: "{colors.text-primary}"
+    rounded: "{rounded.xxl}"
+    padding: "{spacing.xxl}"
+  kpi-block:
+    backgroundColor: "transparent"
+    textColor: "{colors.text-primary}"
+    typography: "{typography.display-xl}"
+  stat-pill:
+    backgroundColor: "{colors.surface-2}"
+    textColor: "{colors.text-primary}"
+    typography: "{typography.numeric-sm}"
+    rounded: "{rounded.sm}"
+    padding: "3px 8px"
+  badge-delta-up:
+    backgroundColor: "{colors.lime-soft}"
+    textColor: "{colors.lime}"
+    typography: "{typography.mono-tag}"
+    rounded: "{rounded.sm}"
+    padding: "3px 7px"
+  badge-delta-down:
+    backgroundColor: "{colors.coral-soft}"
+    textColor: "{colors.coral}"
+    typography: "{typography.mono-tag}"
+    rounded: "{rounded.sm}"
+    padding: "3px 7px"
+  badge-status-success:
+    backgroundColor: "{colors.lime-soft}"
+    textColor: "{colors.lime}"
+    typography: "{typography.caption-sm}"
     rounded: "{rounded.pill}"
-    padding: 8px 20px
-  category-tab-active:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.on-primary}"
+    padding: "3px 10px"
+  badge-status-warning:
+    backgroundColor: "{colors.amber-soft}"
+    textColor: "{colors.amber}"
+    typography: "{typography.caption-sm}"
     rounded: "{rounded.pill}"
-  faq-row:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    typography: "{typography.body-emphasis}"
-    rounded: "{rounded.lg}"
-    padding: 20px 24px
-  chevron-decoration:
-    backgroundColor: "{colors.primary}"
-    textColor: "{colors.on-primary}"
-    rounded: "{rounded.none}"
-  help-band-dark:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.on-primary}"
+    padding: "3px 10px"
+  badge-status-danger:
+    backgroundColor: "{colors.coral-soft}"
+    textColor: "{colors.coral}"
+    typography: "{typography.caption-sm}"
+    rounded: "{rounded.pill}"
+    padding: "3px 10px"
+  segmented-bar-track:
+    backgroundColor: "{colors.surface-3}"
+    rounded: "{rounded.xs}"
+    height: 10px
+  segmented-bar-segment:
+    rounded: "{rounded.xs}"
+  ring-meter:
+    backgroundColor: "transparent"
+    textColor: "{colors.text-primary}"
+  button-primary:
+    backgroundColor: "{colors.azure}"
+    textColor: "{colors.text-on-accent}"
+    typography: "{typography.button-md}"
+    rounded: "{rounded.md}"
+    padding: "9px 14px"
+    height: 34px
+  button-ghost:
+    backgroundColor: "transparent"
+    textColor: "{colors.text-secondary}"
+    typography: "{typography.button-md}"
+    rounded: "{rounded.md}"
+    padding: "9px 12px"
+    height: 34px
+  button-outline:
+    backgroundColor: "transparent"
+    textColor: "{colors.text-primary}"
+    typography: "{typography.button-md}"
+    rounded: "{rounded.md}"
+    padding: "8px 14px"
+    height: 34px
+  icon-button:
+    backgroundColor: "{colors.surface-2}"
+    textColor: "{colors.text-secondary}"
+    rounded: "{rounded.md}"
+    height: 30px
+    padding: "0 {spacing.sm}"
+  segmented-control:
+    backgroundColor: "{colors.surface-2}"
+    textColor: "{colors.text-secondary}"
+    typography: "{typography.button-sm}"
+    rounded: "{rounded.md}"
+    height: 28px
+  segmented-control-active:
+    backgroundColor: "{colors.azure}"
+    textColor: "{colors.text-on-accent}"
+    rounded: "{rounded.sm}"
+  select-pill:
+    backgroundColor: "{colors.surface-2}"
+    textColor: "{colors.text-primary}"
     typography: "{typography.body-md}"
-    padding: 64px 32px
-  footer-dark:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.on-primary}"
+    rounded: "{rounded.md}"
+    height: 30px
+    padding: "0 {spacing.md}"
+  data-row:
+    backgroundColor: "transparent"
+    textColor: "{colors.text-primary}"
     typography: "{typography.body-md}"
-    padding: 64px 32px
+    padding: "{spacing.sm} 0"
+  heatmap-cell:
+    backgroundColor: "{colors.surface-2}"
+    rounded: "{rounded.xs}"
+    size: 12px
+  sparkline:
+    strokeColor: "{colors.azure}"
+    strokeWidth: 1.5
+  divider:
+    backgroundColor: "{colors.hairline}"
+    height: 1px
 ---
 
 ## Overview
 
-HP reads like a long-running consumer-electronics catalog crossed with an enterprise-software product page. The whole system sits on **pure white** (`{colors.canvas}` — `#ffffff`) with thin gray panels (`{colors.cloud}` / `{colors.fog}`) for alternating section bands. There is one chromatic action color — **HP Electric Blue** (`{colors.primary}` — `#024ad8`) — and one ink color (`{colors.ink}` — `#1a1a1a`); together they do ninety percent of the work. Type is a single family across every surface: **Forma DJR Micro**, HP's bespoke geometric grotesque, set at weight 500 for headlines and 400 for body — clean, neutral, slightly mechanical.
+Madup Console reads like a flight-deck instrument cluster. The page sits on a near-black indigo canvas (`{colors.canvas}`) that fades subtly toward a brighter indigo (`{colors.canvas-soft}`) in the upper-left and back to deep black at the corners — a soft vignette that makes the elevated glass cards feel suspended rather than stuck on. There is one chromatic action color, **Electric Azure** (`{colors.azure}`), reserved for the active nav item, primary CTAs, the live data line on charts, and the running-total numerals on KPI cards.
 
-The signature gesture is **angular blue chevrons** — sharp 0-radius slashes derived from the HP wordmark's pair of parallel slashes — that anchor the homepage hero, the laptop-page hero, and the printer pricing page. They appear on the left and right edges of the primary banner card, layered behind product photography. Outside those decorative slashes, every other surface is rectilinear with **soft 8–16px corners** on cards and a 4px corner on buttons.
+The system reads in three layers from back to front: the **canvas vignette** (page background), the **card layer** (a single surface tier with a 1px inner highlight standing in for elevation), and the **inset surface** (a slightly brighter tier for embedded controls, list rows, and chart wells). Color contrast carries every layer change — no card-drop shadow ever has to do the lifting on its own.
 
-The system breaks into three voice modes: a **white commercial body** for product browsing (cards, category icons, pricing tiers); a **dark navy slab** (`{colors.ink}` near-black) for testimonial bands, the closing "How can we help?" footer-prelude, and the page footer; and a **light fog band** (`{colors.cloud}` / `{colors.fog}`) for utility sections like comparison strips and FAQ accordions. The blue accent appears only on filled CTAs, link text, the chevron decorations, and the active price-stamp on a featured tier — never as a section background.
+Type is **strictly two-family**: Pretendard for Korean and Latin prose; JetBrains Mono for every numeral the user is asked to read — token counts, costs, percentages, timestamps, dates in lists. The mono numerals are oversized on KPI cards (`{typography.display-xl}` at 48px) so a single token figure dominates each card's reading hierarchy.
+
+The signal palette is a deliberate **four-light system**: lime for healthy / positive deltas, amber for caution / warning quotas, coral for danger / failure, violet as a neutral fourth used for sessions and capacity-pacing. These four colors carry every status meaning on the dashboard; there is no fifth.
 
 **Key Characteristics:**
-- Pure white canvas (`{colors.canvas}`) with deep ink (`{colors.ink}`) running every body surface; light fog bands (`{colors.cloud}`, `{colors.fog}`) alternate for section rhythm
-- HP Electric Blue (`{colors.primary}`) is the lone CTA fill and link color; it appears at most twice per viewport
-- Bespoke Forma DJR Micro across every surface — display, body, button, caption — at weights 400 / 500 / 600 / 700
-- Cards round at `{rounded.xl}` (16px) for product/pricing tiles; buttons sit at `{rounded.md}` (4px) with capitalize labels
-- Geometric blue chevrons (`{colors.primary}` rectangles cut at 45°) frame hero photography and reinforce the wordmark
-- Dark-navy slabs (`{colors.ink}`) close every page rhythm — testimonial bands, "how can we help?" prelude, and the footer
-- Section rhythm: utility-strip → top nav → white body → cloud-band → ink slab → cloud-band → ink footer
+- Near-black indigo canvas (`{colors.canvas}`) with a soft radial vignette toward `{colors.canvas-soft}` upper-left
+- Three surface tiers (`{colors.surface-1}` → `{colors.surface-2}` → `{colors.surface-3}`) carry every layer of depth; no drop shadows on cards
+- 1px inner-highlight (`{colors.inner-highlight}`) on every card top edge — a subtle glass lift, not a shadow
+- Electric Azure (`{colors.azure}`) is the lone interactive accent: active nav, primary CTAs, current-period data line, running-total numerals
+- Four signal lights (lime / amber / coral / violet) carry status — no fifth color is permitted
+- JetBrains Mono on every numeral; Pretendard everywhere else — including button labels and headings
+- Cards round at `{rounded.xl}` (14px) for utility cards, `{rounded.xxl}` (20px) for the outer window shell and feature cards
+- Layout is fixed-rail sidebar (224px) + fluid card grid; the window itself rounds at the shell layer
 
 ## Colors
 
-> **No Interaction sub-section.** Hover colors are silently filtered. Allowed sub-sections: Brand & Accent, Surface, Text, Semantic.
-
 ### Brand & Accent
-- **HP Electric Blue** (`{colors.primary}` — `#024ad8`): the system's lone signal — primary CTA fill, link color, chevron-decoration fill, active sub-nav indicator. Reserved.
-- **Bright Blue** (`{colors.primary-bright}` — `#296ef9`): a slightly lighter variant used inside dark slabs (testimonial-card buttons, dark-band CTA links) where the deeper blue would muddy.
-- **Deep Navy** (`{colors.primary-deep}` — `#0e3191`): pressed state for the primary CTA and the visited-link color.
-- **Soft Blue** (`{colors.primary-soft}` — `#c9e0fc`): pale-blue surface used inside customer-story cards and selection chips.
+- **Electric Azure** (`{colors.azure}` — `#4DA3FF`): the system's lone interactive color. Active nav indicator, primary CTA fill, current-period chart line, large running-total numerals. Reserve to one or two flame elements per viewport.
+- **Azure Bright** (`{colors.azure-bright}` — `#7BBCFF`): hover state for primary CTA and the bright pole of the azure-soft fill that lights focused inputs.
+- **Azure Deep** (`{colors.azure-deep}` — `#2C7BE5`): pressed state for primary CTA, and the comparison/prior-period chart line that sits behind the bright current line.
+- **Azure Soft** (`{colors.azure-soft}` — alpha `#4DA3FF` at 14%): active nav item fill, focus halo, selected-row tint.
 
 ### Surface
-- **Canvas** (`{colors.canvas}` — `#ffffff`): the universal page background. White, full opacity.
-- **Paper** (`{colors.paper}` — `#ffffff`): card surfaces — same white as canvas, with hairline borders or shadows providing the lift.
-- **Cloud** (`{colors.cloud}` — `#f7f7f7`): the lightest gray section band, used for alternating-row backgrounds and product-feature card groups.
-- **Fog** (`{colors.fog}` — `#e8e8e8`): a slightly darker gray surface band, used for FAQ outer panels and the "Trending laptops" header strip.
-- **Steel** (`{colors.steel}` — `#c2c2c2`): hairline border used on outlined elements with stronger emphasis (focus states, active filter).
-- **Bloom Coral / Bloom Rose** (`{colors.bloom-coral}` / `{colors.bloom-rose}` — `#ff5050`, `#f9d4d2`): the "Get 25% off" sale-tag chip + soft pink lifestyle accent on the sale hero.
-- **Storm Mist / Sea / Deep** (`{colors.storm-mist}`, `{colors.storm-sea}`, `{colors.storm-deep}` — `#8ebdce`, `#7fadbe`, `#356373`): the teal-storm tones reserved for the printer-plan illustration backdrop and supporting infographic accents.
+- **Canvas** (`{colors.canvas}` — `#0B1126`): the universal page background.
+- **Canvas Deep** (`{colors.canvas-deep}` — `#070B17`): the outer letterbox around the window shell.
+- **Canvas Soft** (`{colors.canvas-soft}` — `#11183A`): the brighter pole of the vignette gradient, placed upper-left of the viewport.
+- **Vignette** (`{colors.vignette}` — `#1A2350`): the brightest local hot-spot in the gradient, ~30% opacity at the top-left corner.
+- **Surface 1** (`{colors.surface-1}` — `#121A33`): the default card background.
+- **Surface 2** (`{colors.surface-2}` — `#19233F`): inset / embedded surfaces — list-row backgrounds, icon buttons, segmented controls.
+- **Surface 3** (`{colors.surface-3}` — `#22304D`): the brightest surface tier — segmented bar tracks, heatmap empty cells, segmented control active slot.
+- **Surface Glass** (`{colors.surface-glass}` — white at 4%): the additive lift placed on a card's top half to fake a glass-pane reflection.
 
 ### Text
-- **Ink** (`{colors.ink}` — `#1a1a1a`): the universal text color on white surfaces — headlines, body, button labels, navigation.
-- **Ink Deep** (`{colors.ink-deep}` — `#000000`): pure black used for the wordmark and 1px hairline strokes around badge outlines.
-- **Ink Soft** (`{colors.ink-soft}` — `#292929`): an alternate near-black used inside dark-navy slabs as a subtle textural shift.
-- **On Ink** (`{colors.on-ink}` — `#ffffff`): pure white used for headline and body text on every dark-navy slab.
-- **Charcoal** (`{colors.charcoal}` — `#3d3d3d`): muted body color on white surfaces — secondary descriptions, fine-print disclaimers.
-- **Graphite** (`{colors.graphite}` — `#636363`): smaller-print color, used for legal lines and timestamp metadata.
+- **Text Primary** (`{colors.text-primary}` — `#E7ECF7`): default body and headline color on every surface.
+- **Text Secondary** (`{colors.text-secondary}` — `#9CA8C5`): subdued body color — descriptions, secondary metadata, nav labels (inactive).
+- **Text Tertiary** (`{colors.text-tertiary}` — `#6A7593`): the lowest legible tier — eyebrows, timestamps, axis labels.
+- **Text Faint** (`{colors.text-faint}` — `#454E6A`): non-content text — empty-state placeholders, dim divider labels.
+- **Text on Accent** (`{colors.text-on-accent}` — `#06122B`): near-black text used on Electric Azure fills (primary CTA, active segmented option). The deep canvas tone keeps the contrast cool, not a flat white.
 
-### Semantic
-- **Bloom Deep** (`{colors.bloom-deep}` — `#b3262b`) + **Bloom Wine** (`{colors.bloom-wine}` — `#5a1313`): error and discount-emphasis colors. The deep brick reads as "sale" or "destructive" depending on placement.
-- **Storm Deep** (`{colors.storm-deep}` — `#356373`): used as a neutral status accent (e.g., printer-plan tier "Versatile" tier color).
+### Signal — Four-Light Status
+- **Lime** (`{colors.lime}` — `#9BE15D`): success, positive deltas, healthy quota, completed sessions. Used as the bright pole; `{colors.lime-deep}` for filled regions, `{colors.lime-soft}` for fill backgrounds.
+- **Amber** (`{colors.amber}` — `#F5B544`): warning, mid-quota (40–80%), cost figures. Used for the cost numeral on the Today card — cost is "spending" attention, not "performance."
+- **Coral** (`{colors.coral}` — `#FF6B5C`): danger, failed sessions, over-quota (≥80%), destructive actions. Used sparingly — at most one coral element per viewport unless the page is reporting an actual error state.
+- **Violet** (`{colors.violet}` — `#B68CFF`): a neutral fourth used for the session count, pacing indicators, and the "current week" highlight on the heatmap. Distinguishes structural metrics from performance metrics.
+
+The signal four-light is **exhaustive**. There is no green that is not lime, no red that is not coral, no orange that is not amber. If a new meaning needs a color, find a way to express it inside the existing four or with text weight + an inline glyph.
 
 ## Typography
 
-### Font Family
+### Two-Family System
 
-The voice is **single-family**: Forma DJR Micro (HP's bespoke geometric grotesque, fallback Arial) across every surface — display, body, button, caption. Forma DJR Micro is a wide, slightly rounded grotesque designed at small optical sizes to stay legible at UI-chrome scale. HP runs it at weight 400 for body, 500 for display headlines, 600/700 for emphasis and button labels.
+The system is **strictly two-family**:
 
-The 16/14/12-px caption tier carries the catalog metadata — model numbers, spec rows, fine print — at weight 400 with a 1.4–1.5 line-height. Button labels lift to weight 600/700 with positive 0.5–1.1px letter-spacing and uppercase transform — the only place the system tracks letters.
+- **Pretendard** carries every Korean character and every Latin word — headings, body copy, button labels, captions, nav. Pretendard sits across weights 400 / 500 / 600 / 700 with a wide Hangul x-height that holds up at 11–18px.
+- **JetBrains Mono** carries every numeral the user is asked to read — KPI figures, percentages, costs, dates inside data lists, session timers, model token counts. Mono numerals are tabular by default; no figure dancing in dashboards. Run JetBrains Mono at weight 400 for inline numbers and 500 for KPI displays.
+
+Numbers in flowing prose ("7 sessions today") stay in Pretendard. Numbers in data cells, headlines, or stat blocks switch to JetBrains Mono. The split is by role, not by digit.
 
 ### Hierarchy
 
-| Token | Size | Weight | Line Height | Letter Spacing | Use |
-|---|---|---|---|---|---|
-| `{typography.display-xxl}` | 72px | 500 | 1.0 | 0 | Hero headline (homepage, laptop hub) |
-| `{typography.display-xl}` | 56px | 500 | 1.0 | 0 | Section headlines on landing pages |
-| `{typography.display-lg}` | 44px | 500 | 1.0 | 0 | Sub-section headlines on shop pages |
-| `{typography.display-md}` | 32px | 500 | 1.0 | 0 | Promo strip headlines, FAQ section headers |
-| `{typography.display-sm}` | 24px | 500 | 1.17 | 0 | Card titles, pricing-tier names |
-| `{typography.display-xs}` | 20px | 500 | 1.0 | 0 | Inline list headers, accordion labels |
-| `{typography.body-lg}` | 18px | 400 | 1.33 | 0 | Lead paragraphs |
-| `{typography.body-md}` | 16px | 400 | 1.38 | 0 | Default body |
-| `{typography.body-emphasis}` | 16px | 500 | 1.38 | 0 | Bolded run-in copy |
-| `{typography.caption-md}` | 14px | 400 | 1.5 | 0 | Specs, metadata, captions |
-| `{typography.caption-bold}` | 14px | 700 | 1.3 | 0 | Sale tags, in-card highlights |
-| `{typography.caption-sm}` | 12px | 400 | 1.33 | 0 | Footnotes, legal lines |
-| `{typography.link-md}` | 16px | 500 | 1.38 | 0 | Inline link emphasis |
-| `{typography.button-md}` | 14px | 600 | 1.4 | 0.7px | Primary/secondary button labels (uppercase) |
-| `{typography.button-sm}` | 12.6px | 700 | 1.0 | 0.126px | Compact button labels in tight cells |
-| `{typography.price-md}` | 24px | 500 | 1.17 | 0 | Tier and product price stamps |
+| Token | Size | Weight | Family | Use |
+|---|---|---|---|---|
+| `{typography.display-xxl}` | 64px | 500 | JetBrains Mono | The very largest KPI numeral (rare, reserved for the running team-wide total) |
+| `{typography.display-xl}` | 48px | 500 | JetBrains Mono | Today-card running total — the dashboard's headline numeral |
+| `{typography.display-lg}` | 36px | 500 | JetBrains Mono | Week / Month running totals |
+| `{typography.display-md}` | 28px | 500 | JetBrains Mono | Secondary KPI on side cards (e.g., session count) |
+| `{typography.display-sm}` | 20px | 500 | JetBrains Mono | List-row featured values, ring-meter center label |
+| `{typography.heading-lg}` | 18px | 600 | Pretendard | Card title (`이번 주`, `사용량 한도`) |
+| `{typography.heading-md}` | 16px | 600 | Pretendard | Sub-section headers inside a card |
+| `{typography.heading-sm}` | 14px | 600 | Pretendard | Nav labels, list-section headers |
+| `{typography.body-lg}` | 15px | 400 | Pretendard | Lead paragraphs (rare on dashboard) |
+| `{typography.body-md}` | 13px | 400 | Pretendard | Default body, list-row labels |
+| `{typography.body-emphasis}` | 13px | 500 | Pretendard | Bolded run-in inside body |
+| `{typography.caption-md}` | 12px | 400 | Pretendard | Secondary captions, axis labels |
+| `{typography.caption-sm}` | 11px | 500 | Pretendard | Status badges, footnotes |
+| `{typography.eyebrow}` | 10.5px | 700 | Pretendard | Card eyebrows (`오늘`, `이번 달`) — UPPERCASE 0.16em tracked |
+| `{typography.numeric-lg}` | 22px | 500 | JetBrains Mono | Inline running totals inside list rows |
+| `{typography.numeric-md}` | 14px | 500 | JetBrains Mono | Default numeric cell |
+| `{typography.numeric-sm}` | 12px | 500 | JetBrains Mono | Compact numeric cell — segment percentages, dates |
+| `{typography.mono-tag}` | 11px | 500 | JetBrains Mono | Mono badge label — delta percentages, status counts |
+| `{typography.button-md}` | 13px | 600 | Pretendard | Primary / secondary button labels |
+| `{typography.button-sm}` | 12px | 600 | Pretendard | Compact button labels (segmented controls, icon buttons) |
 
 ### Principles
 
-The typographic decision worth flagging: HP runs **weight 500 for every display size**, including the largest 72px hero headline. Most editorial systems jump to 600/700 at hero scale; HP doesn't. The result feels open and approachable rather than commanding — appropriate for a brand that sells across consumer, SMB, and enterprise audiences in the same catalog.
+The dashboard's headline reading sequence is **eyebrow → KPI → context**: every card opens with a Pretendard 10.5px eyebrow at `{colors.text-tertiary}`, lifts into a 28–48px JetBrains Mono numeral at `{colors.azure}`, and lands in 12–13px Pretendard secondary copy at `{colors.text-secondary}`. The pattern repeats six times across the dashboard; it is the primary rhythm.
 
-Forma DJR Micro's rounded-grotesque shapes do most of the warmth. There's no italic in the system except inside legal disclaimers; emphasis is carried by weight (500 → body-emphasis, 700 → caption-bold) instead.
+Button labels are **lowercase Pretendard**, not uppercase. The system uses uppercase for **eyebrows only** — the small tracked-out labels that name a card. Buttons read as inline prose; eyebrows read as section markers.
 
-### Note on Font Substitutes
+There is **no italic** anywhere. Emphasis is weight (500 → body-emphasis, 600 → heading-md). Hierarchy is family and size, not style.
 
-Forma DJR Micro is proprietary (Commercial Type / Mark Caneso). Closest open-source substitutes:
-- **Inter** at weights 400 / 500 / 600 / 700 — slightly narrower than Forma DJR Micro; bump font-size by ~3% to compensate
-- **Manrope** at weights 400 / 500 / 600 / 700 — closer in proportion, gentler curves; use directly with no metric adjustment
-- **Roboto** at weights 400 / 500 / 700 — flatter character; use as last-resort fallback
+### Font Stack
 
-When swapping, set body line-height to 1.4 and display line-height to 1.0 explicitly — the Forma DJR Micro line-height numbers are tight, and most substitutes default looser.
+```
+font-family: "Pretendard Variable", Pretendard, -apple-system,
+             BlinkMacSystemFont, system-ui, "Helvetica Neue",
+             "Noto Sans KR", sans-serif;
+
+/* For numerals — apply via .num class or a Tailwind utility */
+font-family: "JetBrains Mono", "SF Mono", ui-monospace,
+             "Cascadia Mono", Menlo, Consolas, monospace;
+font-feature-settings: "tnum", "zero", "ss01";
+```
 
 ## Layout
 
-### Spacing System
+### Window Shell
 
-- **Base unit**: 8px. Smaller half-step at 4px. The scale is gentle — most card padding lands at 16px or 24px; section gap at 80px.
-- **Tokens (front matter)**: `{spacing.xxs}` 4px · `{spacing.xs}` 8px · `{spacing.sm}` 12px · `{spacing.md}` 16px · `{spacing.lg}` 20px · `{spacing.xl}` 24px · `{spacing.xxl}` 32px · `{spacing.section}` 80px
-- **Section padding**: `{spacing.section}` (80px) vertical between major bands on desktop; collapses to ~48px on mobile.
-- **Card internal padding**: `{spacing.xl}` (24px) for product cards; `{spacing.xxl}` (32px) for promo strips and feature cards; `{spacing.md}` (16px) for compact article tiles.
-- **Gutter**: `{spacing.xl}` (24px) between grid columns at desktop; `{spacing.md}` (16px) on tablet/mobile.
+The app launches as a free-floating macOS window — not a popover. The window opens at 1440 × 900 by default, with a minimum of 1200 × 760. The shell rounds at `{rounded.xxl}` (20px) and sits on a `{colors.canvas-deep}` letterbox if the OS reveals it.
 
-The 80px section gap is the universal rhythm constant — it appears between every major homepage band, between the hero and the comparison table on the printer-plan page, and between feature rows on the laptop-shop page.
+A 36px **title bar** runs across the top of the shell with the traffic-light controls at the left, the app title (`매드업 토큰 모니터`) centered in 13px Pretendard at `{colors.text-secondary}`, and a connection-status pill at the right. The title bar is `data-tauri-drag-region` for window dragging.
+
+### Sidebar Rail
+
+A 224px **sidebar rail** sits flush-left under the title bar, against a slightly darker tint (`rgba(7,11,23,0.6)`) than the page canvas. The rail holds:
+
+- **Brand row** at the top — the Madup mark + the word-mark `MADUP CONSOLE` in 12px Pretendard 600 tracked at 0.06em
+- **Nav list** — five items: Dashboard / MCP / Plugins / Leaderboard / Chat — each a 36px row with a 16px icon and a 14px Pretendard label
+- **Spacer** with a divider above the user block
+- **User block** at the bottom — 28px avatar + name + email in two lines, with a Settings gear and Sign-out icon flush right
+
+Active nav item draws `{colors.azure-soft}` fill + `{colors.azure-bright}` text. Inactive nav items default to `{colors.text-secondary}` text on a transparent fill. There is **no hover state** documented; on touch screens this falls back to the active state on tap.
 
 ### Grid & Container
 
-- **Desktop max-width**: 1366px content container with full-bleed-on-canvas section backgrounds.
-- **Hero**: a single full-width photo card (homepage and laptop-hub hero) with the headline overlay positioned upper-left or upper-right.
-- **Product family grid**: 4 columns at >1200px, 3 at 1024–1199px, 2 at 768–1023px, 1 below 768px.
-- **Pricing tiers**: 4 columns at >1024px, 2x2 grid at 768–1023px, single-column accordion below 768px.
-- **Footer**: 5-column link grid at >1024px, collapsing to 2-column then accordion on mobile.
+- **Sidebar**: 224px fixed
+- **Content**: fluid, minimum 976px, with `{spacing.xxl}` (28px) padding on every side and `{spacing.lg}` (16px) gaps between cards
+- **Default grid**: 12 columns inside the content area; cards span any whole number of columns
+- **Common spans**: 8 + 4 (KPI + side), 6 + 6 (two equal cards), 3 + 3 + 3 + 3 (four-up bottom row), 8 + 4 (chart + breakdown)
 
 ### Whitespace Philosophy
 
-Whitespace is **commercial-clean** — generous around hero photography, tight around catalog spec rows. Product cards leave breathing room above and below the photo (≥32px) so the laptop or printer reads as a hero shot rather than a thumbnail. The fine-print disclaimer regions (legal, footnote rows) tighten line-height to 1.3 and shrink type to 11–12px so the bulk of fine print stays compact.
+The dashboard is **dense but breathable**. Cards keep `{spacing.xl}` (20px) internal padding — generous enough that the eye separates the eyebrow from the KPI, tight enough that the dashboard never feels half-empty. Section gaps stay at `{spacing.lg}` (16px); collapsing further reads as cramped.
+
+The single most important whitespace move is **the gap between the eyebrow and the KPI numeral**: `{spacing.md}` (12px). Smaller than that and the eyebrow reads as a label, not a section start. The numeral has to feel like it earned a hard return.
 
 ## Elevation & Depth
 
+The system has **no drop shadows**. Every layer change is communicated by surface contrast.
+
 | Level | Treatment | Use |
 |---|---|---|
-| 0 — Flat | No border, no shadow. | Section bands (white, cloud, fog), full-bleed photo heroes |
-| 1 — Hairline | 1px solid `{colors.hairline}` (`#e8e8e8`) border, no shadow. | Outlined buttons, comparison-table cells, FAQ accordion outers |
-| 2 — Soft Lift | `0 2px 8px rgba(26, 26, 26, 0.08)`. | Product cards, pricing-tier columns, customer-story tiles |
-| 3 — Floating Modal | `0 8px 24px rgba(26, 26, 26, 0.12)`. | Add-to-cart drawer, mobile-nav sheet, image zoom modal |
+| 0 — Canvas | `{colors.canvas}` with radial vignette toward `{colors.canvas-soft}` upper-left | Page background |
+| 1 — Surface 1 | `{colors.surface-1}` + 1px top-edge `{colors.inner-highlight}` | Default card |
+| 2 — Surface 2 | `{colors.surface-2}` | Embedded controls inside a card — segmented controls, icon buttons, list-row hover, focused input |
+| 3 — Surface 3 | `{colors.surface-3}` | Track surfaces — segmented-bar tracks, heatmap empty cells, segmented-control active backdrop |
 
-The system is mostly flat — depth is communicated by **color contrast** (cloud-band vs. white card on the same band) rather than shadow elevation. The Soft Lift level is the workhorse for the catalog — every product tile and pricing column gets it; nothing else does. Modal-floating is rare and reserved for transient overlays.
+The 1px **inner highlight** on every card's top edge is the system's signature depth gesture. Rendered as a `linear-gradient(180deg, rgba(255,255,255,0.05) 0%, transparent 1.5px)` background blended on top of the card fill, it reads as a glass pane catching ambient light. Bottom edge gets no equivalent; the unevenness is intentional and makes the card feel suspended from the top.
 
-### Decorative Depth
-
-The system's most distinctive depth gesture is the **HP blue chevron pair** — two angular `{colors.primary}` slashes (no radius, no shadow) that sit on the left and right of the homepage hero card and the laptop-shop hero. They're not decorative noise; they're a literal echo of the HP wordmark's two parallel slashes, scaled up to architectural size. Treat them as a brand artifact, not a generic geometric flourish.
-
-Photography on the homepage and laptop-shop pages frames product imagery inside `{rounded.xl}` (16px) containers with a soft 1px hairline. Lifestyle photography (testimonials, "How HP works for X") sits full-bleed inside dark-navy slabs without rounding.
+The **window-shell** sits on the `{colors.canvas-deep}` letterbox with a single 1px `{colors.hairline-strong}` outer stroke and no shadow. The OS-level drop shadow under the window provides any depth beyond the shell border.
 
 ## Shapes
 
@@ -462,173 +516,171 @@ Photography on the homepage and laptop-shop pages frames product imagery inside 
 
 | Token | Value | Use |
 |---|---|---|
-| `{rounded.none}` | 0px | Hero chevron decorations, full-bleed photo heroes, marquee strips |
-| `{rounded.xs}` | 2px | Secondary chip backgrounds, sale-tag pills |
-| `{rounded.sm}` | 3px | Default secondary CTA radius (small touch zones) |
-| `{rounded.md}` | 4px | Primary buttons, secondary buttons, text inputs |
-| `{rounded.lg}` | 8px | Badge pills, category-icon cards, FAQ row containers |
-| `{rounded.xl}` | 16px | Product cards, pricing tiers, customer-story tiles, photo frames |
-| `{rounded.pill}` | 9999px | Category sub-nav tabs, search-pill input, filter chips |
+| `{rounded.none}` | 0 | Title-bar surface (it bleeds into the shell rounding above), chart axes |
+| `{rounded.xs}` | 4px | Segmented-bar segments, heatmap cells, mono tags |
+| `{rounded.sm}` | 6px | Stat pills, focus rings, small chips |
+| `{rounded.md}` | 8px | Buttons, inputs, segmented controls, icon buttons, nav items |
+| `{rounded.lg}` | 10px | Sub-cards, inline panels inside a card |
+| `{rounded.xl}` | 14px | Default card |
+| `{rounded.xxl}` | 20px | Window shell, feature card |
+| `{rounded.pill}` | 9999px | Status badges, avatar masks, ring-meter handles |
 
-The system maintains a clear two-tier philosophy: **buttons stay sharp** (4px, almost rectilinear) while **cards and photo frames stay soft** (16px). This split is the visual signature — sharp interactive elements against softer container surfaces.
-
-### Photography Geometry
-
-Hero photography sits in `{rounded.xl}` (16px) frames with no border. Product family thumbnails inside the laptop-grid are 1:1 (square) on a `{colors.canvas}` background, padded so the laptop is shown at ~70% of the frame. Customer-story photography uses 16:9 inside the same `{rounded.xl}` frame. There are no full-bleed circular avatars; testimonial avatars are 4px-rounded squares.
+The two-tier philosophy is the same as any modern dashboard: **interactive elements stay tighter** (6–8px) than container surfaces (14–20px). The 14/20 split between card and shell echoes the iOS app shell language without quoting it directly.
 
 ## Components
 
-> **No hover states documented.** Every component spec below documents only Default and Active/Pressed states. Variants live as separate front-matter entries.
+> Only Default and Active/Pressed states are documented for every component below. Variants live as separate front-matter entries.
 
 ### Buttons
 
-**`button-primary`** — the lone HP Electric Blue CTA
-- Background `{colors.primary}`, text `{colors.on-primary}`, type `{typography.button-md}` (uppercase, 0.7px tracking), padding `{spacing.sm} {spacing.xl}` (12 × 24), height 44px, rounded `{rounded.md}`
-- Pressed state `button-primary-pressed` — background `{colors.primary-deep}`, same text
-- Disabled state `button-primary-disabled` — background `{colors.steel}`, white text
-- Used for: "Buy now", "Shop now", "Get a printer", primary form submit
+**`button-primary`** — the lone Electric Azure CTA
+- Background `{colors.azure}`, text `{colors.text-on-accent}`, type `{typography.button-md}`, rounded `{rounded.md}`, padding 9px 14px, height 34px
+- Used for: 새로고침 quota button, 새 메시지 send, primary form submit, Slack 로그인 CTA
+- Pressed: background `{colors.azure-deep}`
 
-**`button-ink`** — black filled CTA
-- Background `{colors.ink}`, text `{colors.on-primary}`, padding `{spacing.sm} {spacing.xl}`, height 44px, rounded `{rounded.md}`, type `{typography.button-md}`
-- Used for: "Buy now" on dark photo overlays, secondary primary actions where the blue would clash with imagery
+**`button-outline`** — neutral secondary CTA
+- Background transparent, text `{colors.text-primary}`, 1px `{colors.hairline-strong}` border, rounded `{rounded.md}`, padding 8px 14px
+- Used for: Copy / Export buttons in the daily list
 
-**`button-outline`** — blue-text outlined CTA
-- Background `{colors.canvas}`, text `{colors.primary}`, 1px `{colors.primary}` border, padding `{spacing.sm} {spacing.xl}`, height 44px, rounded `{rounded.md}`
-- Used for: "Compare", "Customize", "Learn more" — secondary actions on white surfaces
+**`button-ghost`** — invisible action
+- Background transparent, text `{colors.text-secondary}`, rounded `{rounded.md}`, padding 9px 12px
+- Used for: title-bar Settings / Sign-out triggers, card-header overflow menus
 
-**`button-outline-ink`** — black-text outlined CTA
-- Background `{colors.canvas}`, text `{colors.ink}`, 1px `{colors.ink}` border, padding `{spacing.sm} {spacing.xl}`, height 44px, rounded `{rounded.md}`
-- Used for: "View" buttons inside product family card grids — neutral against the blue primary
+**`icon-button`** — compact icon affordance
+- Background `{colors.surface-2}`, text `{colors.text-secondary}`, rounded `{rounded.md}`, height 30px
+- Used for: refresh / overflow / filter triggers on card headers
 
-**`button-text-link`** — inline blue link with underline
-- Background `{colors.canvas}`, text `{colors.primary}`, type `{typography.link-md}`, padding `{spacing.xxs} 0`
-- Used for: "See details", "Read more" inside cards and disclaimer rows
+### Segmented Controls & Pills
 
-### Cards & Containers
+**`segmented-control`** + **`segmented-control-active`** — the inline filter group
+- Default: background `{colors.surface-2}`, text `{colors.text-secondary}`, height 28px, rounded `{rounded.md}`, padding 0 around two-to-four 2-padded child buttons
+- Active option: background `{colors.azure}`, text `{colors.text-on-accent}`, inner-rounded `{rounded.sm}` to nest inside the outer track
+- Used for: Tokens/Cost toggle, Chart/List toggle, granularity (Daily/Weekly/Monthly)
 
-**`card-product`** — the workhorse product tile
-- Background `{colors.canvas}`, rounded `{rounded.xl}` (16px), padding `{spacing.xl}` (24px), Soft Lift shadow
-- Layout: hero photo (1:1 ratio) on top, title in `{typography.display-xs}`, spec rows in `{typography.caption-md}`, price in `{typography.price-md}`, CTA pinned to bottom
-- Used for: laptop catalog cards, desktop catalog cards
+**`select-pill`** — dropdown filter
+- Background `{colors.surface-2}`, text `{colors.text-primary}`, rounded `{rounded.md}`, height 30px, padding 0 12px, with a 10px caret on the right
 
-**`card-product-feature`** — full-row feature card with photo + copy
-- Background `{colors.cloud}`, rounded `{rounded.xl}`, padding `{spacing.xxl}` (32px)
-- Layout: photo on the left (50% width), copy on the right with section eyebrow + title + body + CTA pair
-- Used for: "Trending laptops" feature rows, "Shop these must haves"
+**`stat-pill`** — a numeric chip sitting next to a label
+- Background `{colors.surface-2}`, text `{colors.text-primary}`, rounded `{rounded.sm}`, padding 3px 8px, type `{typography.numeric-sm}`
 
-**`card-pricing-tier`** + **`card-pricing-tier-featured`**
-- Background `{colors.canvas}`, rounded `{rounded.xl}`, padding `{spacing.xl}`, Soft Lift shadow
-- Tier name in `{typography.display-sm}`, monthly price in `{typography.display-md}` with `{typography.caption-md}` cadence, page count caption, full feature list, primary CTA
-- Featured tier carries `{colors.primary}` text accent on the price-stamp + a `{colors.primary}` thin top border instead of a colored card background — never inverted to dark
+### Badges
 
-**`card-customer-story`** — the three-up testimonial tile
-- Background `{colors.canvas}`, rounded `{rounded.xl}`, padding `{spacing.md}` (16px), Soft Lift shadow
-- 16:9 photo at top in `{rounded.xl}` frame, quote excerpt in `{typography.body-md}`, attribution row at the bottom
-- Used in the "See what our customers say" homepage section
+**`badge-delta-up`** + **`badge-delta-down`** — directional deltas
+- Up: background `{colors.lime-soft}`, text `{colors.lime}`, type `{typography.mono-tag}`, rounded `{rounded.sm}`, padding 3px 7px, leading `+` glyph
+- Down: background `{colors.coral-soft}`, text `{colors.coral}`, same shape, leading `−` glyph
+- Used for: "+12% vs 7d 평균" delta indicators on the Today card
 
-**`card-article-tile`** — the four-up "Latest from HP" tile
-- Background `{colors.canvas}`, rounded `{rounded.xl}`, padding `{spacing.md}`, Soft Lift shadow
-- 16:9 thumbnail at top, date eyebrow in `{typography.caption-sm}`, title in `{typography.body-emphasis}`, "Read more" link
+**`badge-status-success` / `badge-status-warning` / `badge-status-danger`** — pill statuses
+- Background `{signal-soft}`, text `{signal}`, type `{typography.caption-sm}`, rounded `{rounded.pill}`, padding 3px 10px
+- Used for: quota status, connection status, message statuses
 
-**`card-category-icon`** — the small icon-and-label card in the homepage "Our Products" row
-- Background `{colors.canvas}`, rounded `{rounded.lg}` (8px), padding `{spacing.md}`
-- 48px icon at top, label in `{typography.body-emphasis}` below
-- Used for: Laptops, Desktops, Printers, Computer Tools, Accessories, Enterprise Solutions
+### Cards
 
-**`hero-promo-card`** — the homepage hero card with chevron decorations
-- Background `{colors.canvas}`, rounded `{rounded.xl}`, padding `{spacing.xxl}` (32px)
-- Photography occupies left half; copy block (eyebrow + headline + price stamp + CTA pair) occupies right half
-- Flanked by `chevron-decoration` blue slashes outside the card's bounding box on left and right edges
+**`card`** — the default card
+- Background `{colors.surface-1}`, rounded `{rounded.xl}` (14px), padding `{spacing.xl}` (20px), 1px top inner-highlight `{colors.inner-highlight}`
+- Layout: eyebrow → KPI numeral → secondary copy → optional sparkline / mini-stat row
 
-**`promo-strip-dark`** — the inline dark navy promo block
-- Background `{colors.ink}`, text `{colors.on-ink}`, rounded `{rounded.xl}`, padding `{spacing.xxl} 48px`
-- Used for: "When did work start getting in the way of work?" mid-page promo, the SMB testimonial slab
+**`card-elevated`** — embedded surface for nested content
+- Background `{colors.surface-2}`, same rounding and padding
+- Used for: chart wells embedded inside a parent card
 
-### Inputs & Forms
+**`card-feature`** — the dashboard hero card (the Today card)
+- Background `{colors.surface-1}`, rounded `{rounded.xxl}` (20px), padding `{spacing.xxxl}` (28px)
+- Sized to span 8 of 12 columns at default desktop width
 
-**`text-input`** + **`text-input-focused`**
-- Background `{colors.canvas}`, text `{colors.ink}`, rounded `{rounded.md}`, padding `{spacing.sm} {spacing.md}`, height 44px
-- 1px `{colors.steel}` border in default; gains 1px `{colors.ink}` border on focus (no halo)
+### KPI Block
 
-**`text-input-search`** — pill search in the top nav
-- Background `{colors.canvas}`, rounded `{rounded.md}`, padding `{spacing.sm} {spacing.md}`, height 40px, 1px `{colors.steel}` border, magnifying-glass icon at right
+A KPI block (`kpi-block`) is not a card on its own — it lives inside a card. It is the **eyebrow → numeral → context** stack used six times across the dashboard:
 
-**`badge-pill-ink`** — filled tag pill
-- Background `{colors.ink}`, text `{colors.on-primary}`, rounded `{rounded.lg}`, padding 6px 12px, type `{typography.body-md}`
-- Used inline next to product titles to mark "New" or featured indicators
+- Eyebrow: `{typography.eyebrow}` in `{colors.text-tertiary}`, margin-bottom `{spacing.md}`
+- Numeral: `{typography.display-xl}` (48px JetBrains Mono) in `{colors.azure}` for the active running total
+- Suffix: small inline `{typography.body-md}` Pretendard "tokens" / "원" caption at `{colors.text-secondary}`, baseline-aligned next to the numeral
+- Context row: `{typography.caption-md}` at `{colors.text-secondary}` with optional delta badge
 
-**`badge-pill-outline`** — outlined tag pill
-- Background `{colors.canvas}`, text `{colors.ink}`, 1px `{colors.ink}` border, rounded `{rounded.lg}`, padding 6px 12px
+Cost KPIs swap the azure numeral for `{colors.amber}`. Session-count KPIs swap to `{colors.violet}`. Request-count KPIs stay azure (azure = "the thing we're measuring; the running total").
 
-**`badge-sale-coral`** — the sale price-stamp
-- Background `{colors.bloom-coral}`, text `{colors.on-primary}`, rounded `{rounded.sm}`, padding `{spacing.xxs} {spacing.xs}`, type `{typography.caption-bold}`
-- Used for: "Save $200", "25% off" overlay tags on hero promo cards
+### Charts
 
-### Navigation
+**`sparkline`** — inline mini-line
+- 1.5px stroke `{colors.azure}`, no fill, no axes, no points — pure shape
+- Sized to a 96 × 28 cell that sits at the bottom-right of a KPI card
 
-**`utility-strip`** — the top-of-page utility bar
-- Background `{colors.ink}`, text `{colors.on-primary}`, height 36px, padding 0 {spacing.xl}, type `{typography.caption-md}`
-- Holds: country/locale picker, "For Business / For Home" toggle, "Sign in" link, cart link
+**Bar chart (Daily)**
+- Bars in `{colors.azure}` at full saturation for the most recent period, `{colors.azure-deep}` for comparison periods
+- 2px gap between bars, 8px corner radius on top corners only, flat bottom
+- X-axis: `{typography.caption-md}` in `{colors.text-tertiary}`; Y-axis is hidden — a single horizontal hairline at `{colors.hairline}` separates bars from the axis row
 
-**`nav-bar-top`** — desktop top nav (sits below utility strip)
-- Background `{colors.canvas}`, height 64px, padding 0 32px
-- Layout: HP wordmark logo flush left → middle category list (Laptops / Desktops / Printers / Accessories / Solutions / Support) → right slot with Search field, Sign-in link, Cart icon
-- 1px `{colors.hairline}` bottom border separates nav from page
+**Line chart (Hourly / Trends)**
+- Current line: 2px stroke `{colors.azure}` with a single 8px filled circle at the latest data point
+- Comparison line: 1.5px stroke `{colors.azure-deep}` at 60% opacity, no points
+- Gradient fill from `{colors.azure-soft}` to transparent below the current line — a 30% opacity wash, no harder than that
 
-**`nav-link`**
-- Background `{colors.canvas}`, text `{colors.ink}`, type `{typography.body-md}`, padding `{spacing.xs} {spacing.md}`
-- Active page draws a 2px `{colors.primary}` underline below the text baseline
+**`ring-meter`** — donut for percentage quotas
+- 8px stroke, rounded line cap, full ring at `{colors.surface-3}` in the back, active arc in the signal color
+- Center label: `{typography.display-sm}` (20px Mono) the percentage; below it `{typography.caption-md}` the metric name
+- Stroke color: `{colors.lime}` (0–40%), `{colors.amber}` (40–80%), `{colors.coral}` (80–100%)
 
-**Top Nav (Mobile)**
-- Same height, hamburger icon replaces the middle category list, Search and Cart stay visible
-- Drawer expands as a full-canvas sheet with `{typography.body-lg}` link list and a sticky Sign-in CTA at bottom
+**`segmented-bar`** — the 12-segment quota meter from the original popup
+- Track: `{colors.surface-3}`, rounded `{rounded.xs}`, height 10px, 12 segments separated by 2px gaps
+- Filled segments use the same signal-color ramp as `ring-meter`
+- Stays in the system because it expresses pacing-in-time (this many ticks remain) better than a continuous bar
 
-**`category-tab`** + **`category-tab-active`** — the pill sub-nav
-- Default: background `{colors.canvas}`, text `{colors.ink}`, type `{typography.body-emphasis}`, rounded `{rounded.pill}`, padding `{spacing.xs} {spacing.lg}`
-- Active: background `{colors.ink}`, text `{colors.on-primary}`, same rounding
-- Used on the laptop-shop page for "All / Trending / On Sale" filtering, and on the homepage "How can we help?" closing band
+**`heatmap-cell`** — activity heatmap unit
+- 12 × 12px squares, `{rounded.xs}` corners, 3px gap between cells
+- Five-step ramp from `{colors.surface-2}` (empty) → `{colors.azure-deep}` (1) → `{colors.azure}` (2) → `{colors.azure-bright}` (3) → `{colors.violet}` (4, today / current period accent only)
 
-### Signature Components
+### Data Rows
 
-**`chevron-decoration`** — the geometric blue slash motif
-- Background `{colors.primary}`, rounded `{rounded.none}`, no shadow
-- Renders as a sharp parallelogram cut at ~60° angle, sized to the height of the hero card it flanks
-- Reserved for hero bands and full-page banners — never decorative noise inside cards
+**`data-row`** — list row inside a card
+- Padding `{spacing.sm} 0`, dividers as 1px `{colors.hairline}` between rows (not above the first; not below the last)
+- Left: `{typography.body-md}` label; Right: `{typography.numeric-md}` in `{colors.azure}` (or signal color if marked)
+- Empty / zero rows: row opacity drops to 50%; numeric replaces with "—" in `{colors.text-faint}`
 
-**`faq-row`** — the accordion row on the printer-plan FAQ
-- Background `{colors.canvas}`, rounded `{rounded.lg}`, padding `{spacing.lg} {spacing.xl}`, type `{typography.body-emphasis}`
-- 1px `{colors.hairline}` divider between rows; chevron-down icon on the right collapsed, chevron-up when expanded
-- Body answer renders inside the same row container in `{typography.body-md}` after expansion
+### Mini-Bar List
 
-**`help-band-dark`** — the closing "How can we help?" prelude band
-- Background `{colors.ink}`, text `{colors.on-primary}`, padding 64px {spacing.xl}
-- Layout: large lifestyle photograph as the band background (low-opacity) with chip-style category tabs centered: Browse Topics / Live Chat / Contact / Diagnose / Order Status
+**`mini-bar-list`** — the breakdown component for tool cost / model usage
+- Each row: label flush left at `{colors.text-primary}`, value flush right at `{colors.azure}` in `{typography.numeric-md}`, then a 4px-tall thin bar below at full row width filled to the relative value
+- Bar uses `{colors.azure-deep}` for the fill and `{colors.surface-3}` for the unfilled track
+- Bars all share the same scale (the max-value row fills 100%)
 
-**`footer-dark`**
-- Background `{colors.ink}`, text `{colors.on-primary}`, type `{typography.body-md}`, padding 64px {spacing.xl}
-- 5-column link grid (Company / Shop / Support / Resources / Connect) with `{typography.body-emphasis}` headers and `{typography.caption-md}` link rows
-- Bottom strip carries social icons, language picker, and legal lines in `{typography.caption-sm}` muted to `{colors.steel}`
+### Title Bar
+
+**`title-bar`** — top window strip
+- Height 36px, background transparent (the canvas vignette shows through), `data-tauri-drag-region`
+- Left: 3 macOS traffic-light circles at 12px diameter, 8px gaps
+- Center: `매드업 토큰 모니터` in `{typography.caption-md}` at `{colors.text-secondary}`
+- Right: connection status pill (`{badge-status-*}`), then a `{button-ghost}` overflow trigger
+
+### Sidebar
+
+**`sidebar-rail`** — fixed-left navigation
+- Width 224px, background `rgba(7,11,23,0.6)`, no border (the canvas tone shift carries the separation)
+- Padding `{spacing.xl} {spacing.md}` (20 / 12)
+- 1px right-edge `{colors.hairline}` divider
+
+**`nav-item`** + **`nav-item-active`**
+- Default: background transparent, text `{colors.text-secondary}` in `{typography.heading-sm}`, height 36px, rounded `{rounded.md}`, padding `{spacing.sm} {spacing.md}` (8 / 12), 16px stroke icon flush left in `{colors.text-tertiary}`
+- Active: background `{colors.azure-soft}`, text `{colors.azure-bright}`, icon switches to `{colors.azure}`
 
 ## Do's and Don'ts
 
 ### Do
-- Reserve `{colors.primary}` for the primary CTA, link color, and `chevron-decoration` motif — at most twice per viewport
-- Set every headline in Forma DJR Micro at weight 500 with line-height 1.0 — resist the urge to bump weight at hero scale
-- Use `{rounded.xl}` (16px) for cards and photo frames; `{rounded.md}` (4px) for buttons and inputs — keep the two-tier split sharp
-- Pair white `{colors.canvas}` body bands with `{colors.cloud}` (`#f7f7f7`) alternating bands; let the gray do the breathing
-- Close every page rhythm with a dark-navy `{colors.ink}` slab — the "How can we help?" prelude + footer
-- Set button labels in uppercase with `{typography.button-md}` (0.7px tracking) — the only place the system tracks letters
-- Use Soft Lift shadow exclusively for product cards and pricing tiers — leave section bands flat
-- Frame product photography inside `{rounded.xl}` containers; never use full-bleed circular masks
+- Lead every card with the **eyebrow → numeral → context** stack — six repetitions across the dashboard establish the rhythm
+- Reserve Electric Azure for the active nav, primary CTA, and the running-total numeral — at most two flame elements per viewport
+- Set every numeral the user reads in **JetBrains Mono** — token counts, costs, percentages, dates, timers, session counters
+- Use the four-light signal palette exhaustively — lime / amber / coral / violet — and resist inventing a fifth status color
+- Communicate elevation through **surface contrast** (`{colors.surface-1}` → `{colors.surface-2}` → `{colors.surface-3}`); no drop shadows on cards
+- Put the 1px top-edge inner-highlight on every card; let the bottom edge stay unlit (the unevenness is the gesture)
+- Run buttons in **lowercase Pretendard 600**; reserve UPPERCASE 0.16em tracking for **eyebrows only**
 
 ### Don't
-- Don't introduce secondary saturated colors outside `{colors.primary}` family + the `bloom-coral` sale-tag and `storm` printer-plan accents
-- Don't apply heavy material shadows — depth is via color contrast (cloud vs. white) and Soft Lift only
-- Don't round buttons above `{rounded.md}` (4px); a soft 8px+ button reads as a different brand
-- Don't run Forma DJR Micro below 12px — small caption at 11px is the floor
-- Don't use the chevron decoration as inline noise; it is a hero-only architectural element tied to the wordmark
-- Don't drop ink text opacity to create hierarchy — switch surface or shift to `{colors.charcoal}` / `{colors.graphite}` instead
-- Don't replace the HP wordmark with a generic sans lockup; the wordmark is a custom mark with its own ratio
+- Don't replace the four-light signal palette with general dashboard reds, greens, oranges — the four are deliberate
+- Don't apply drop shadows to cards; the system reads layers via surface contrast, not Material lift
+- Don't put numerals inside flowing prose in JetBrains Mono — the family split is by role (data vs. prose), not by digit
+- Don't put the inner-highlight on all four edges; the asymmetric top-only highlight is the gesture
+- Don't round buttons above `{rounded.md}` (8px); pill-rounded buttons read as a different brand
+- Don't introduce a fifth surface tier; three (canvas + surface-1 + surface-2 + surface-3) is the entire depth vocabulary
+- Don't run the sidebar wider than 224px; cards collapse below 976px content width and the layout breaks
 
 ## Responsive Behavior
 
@@ -636,35 +688,28 @@ Hero photography sits in `{rounded.xl}` (16px) frames with no border. Product fa
 
 | Name | Width | Key Changes |
 |---|---|---|
-| Mobile | < 480px | Single-column stack; hamburger nav; section padding drops to ~48px; hero serif scales to ~36px |
-| Mobile-Large | 480–767px | Same column count; hero scales to ~44px; pricing tiers stack vertically |
-| Tablet | 768–1023px | 2-column product grid; pricing 2x2; nav still full text labels |
-| Desktop | 1024–1279px | 3-column product grid; 4-column pricing; full nav |
-| Desktop-Large | ≥ 1280px | 4-column product grid; 1366px content max-width with full-bleed bands |
+| Compact | 1200–1339px | 12-col grid collapses to 8-col; four-up bottom row stacks to 2x2; cards keep their padding |
+| Default | 1340–1599px | Full 12-col grid; sidebar fixed at 224px |
+| Wide | ≥ 1600px | Content max-width caps at 1440px; sidebar stays 224px; left/right margins grow |
+
+There is no mobile breakpoint — this is a desktop app with a minimum window size of 1200 × 760. Window resizes below the minimum trigger an OS-level resize fence; nothing collapses inside.
+
+### Cards Collapse Order
+
+When the viewport drops below default width, cards collapse in this order:
+1. The four-up bottom row (Week / Month / Tool / Model) becomes a 2x2 grid
+2. The 8 + 4 KPI + Quota row becomes stacked, full-width
+3. The Activity heatmap card collapses its row count from 8 weeks to 6 weeks
 
 ### Touch Targets
 
-Every interactive element clears 44×44px on mobile. `button-primary` at 44px height + 24px horizontal padding meets WCAG-AAA touch target. `category-tab` at 8px 20px padding bumps to 12px 24px on touch screens. Nav-link tap areas extend invisibly beyond the text run to the full 44px row height. Sticky cart/sign-in icons in the top nav use 44×44 invisible hit boxes around their visible 24×24 glyph.
-
-### Collapsing Strategy
-
-- **Utility strip**: stays visible on every breakpoint; dropdowns collapse into a single "Account" icon below 768px
-- **Top nav**: middle category list collapses into a hamburger drawer below 1024px; the right-side Search + Sign-in + Cart stay visible
-- **Hero**: stays single-column at every breakpoint; chevron decorations shrink to ~60% size on tablet and disappear entirely on mobile
-- **Product family grid**: 4 → 3 → 2 → 1 column as breakpoints shrink; cards keep `{rounded.xl}` corners at every size
-- **Pricing comparison table**: 4-column grid on desktop collapses to 2x2 on tablet, then stacks into individual accordion-style cards on mobile
-- **Footer**: 5-column link grid → 2-column tablet → single-column accordion on mobile; HP wordmark stays flush left
-
-### Image Behavior
-
-Hero photography uses `{rounded.xl}` containers at every breakpoint. The chevron decorations vanish on mobile; the underlying photo card centers in the viewport. Lifestyle photography in the testimonial and "how-can-we-help" bands maintains 16:9 ratio with horizontal cropping rather than letterboxing on mobile. There are no art-direction crop swaps between desktop and mobile — the same image is used at every size.
+Every interactive element clears 32 × 32px (this is a mouse-first desktop product; pointer targets are smaller than mobile but not below 32px). Title-bar icons sit at 30px height, segmented-control segments at 28px, nav items at 36px.
 
 ## Iteration Guide
 
-1. Focus on ONE component at a time; resist refactoring an entire section in one pass
-2. Reference component names and tokens directly (`{colors.primary}`, `{typography.display-xxl}`, `{rounded.xl}`, `card-product`) — do not paraphrase to hex/px in prose
-3. Run `npx @google/design.md lint DESIGN.md` after edits — `broken-ref`, `contrast-ratio`, and `orphaned-tokens` warnings flag issues automatically
-4. Add new variants as separate component entries (`-pressed`, `-disabled`, `-focused`); never bury state inside prose
-5. Default body to `{typography.body-md}`; reach for `{typography.body-emphasis}` for run-in bolds; keep display sizes for true heading roles
-6. Keep `{colors.primary}` scarce — at most two flame elements per viewport (one CTA + one chevron decoration). Three flame items in one viewport is over-saturation
-7. When introducing a new section band, choose from `{colors.canvas}` / `{colors.cloud}` / `{colors.fog}` / `{colors.ink}` — six pre-defined surface modes is the entire surface vocabulary
+1. Reference component names and tokens directly (`{colors.azure}`, `{typography.display-xl}`, `{rounded.xl}`, `card-feature`) — never paraphrase to hex/px in component prose
+2. Keep `{colors.azure}` scarce — at most two flame elements per viewport (the active nav + one KPI numeral, or the active nav + one CTA)
+3. Add new card variants by tier (`card`, `card-elevated`, `card-feature`); never invent a new surface color outside the three-tier system
+4. Status colors are deliberate; if a new meaning needs visual distinction, find a way inside the existing four lights or use text weight + an inline glyph
+5. The eyebrow → numeral → context rhythm is the system's signature; new cards must honor it before they earn a custom layout
+6. Default body to `{typography.body-md}`; reach for `{typography.body-emphasis}` for run-in bolds; never substitute italic

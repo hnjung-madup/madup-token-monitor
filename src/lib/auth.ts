@@ -4,21 +4,28 @@ import { supabase, signInWithSlack } from "./supabase";
 
 export type AuthState = "loading" | "authenticated" | "unauthenticated";
 
+const IS_TAURI = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+
+/// Slack OAuth 시작.
+/// - Tauri (dev / prod): 외부 브라우저 (openUrl) — Slack 이 WKWebView 사용자에이전트를
+///   차단하므로 같은 webview 안에서 OAuth 진행 불가. deep-link 로 복귀.
+/// - 브라우저 dev: 같은 탭에서 navigate → /login 같은 origin 으로 복귀 (Supabase auto-detect).
 export async function startSlackLogin(): Promise<void> {
   const { url } = await signInWithSlack();
   if (!url) throw new Error("OAuth URL is missing");
-  await openUrl(url);
+  if (IS_TAURI) {
+    await openUrl(url);
+  } else {
+    window.location.href = url;
+  }
 }
 
-// Tauri deep-link callback 처리
-// Supabase는 흐름에 따라 두 가지 형태로 토큰을 보냄:
+// Tauri prod 의 deep-link callback 처리. Supabase 는 흐름에 따라 두 가지 형태로 토큰을 보냄:
 //   ① PKCE code flow: ?code=...           → exchangeCodeForSession
 //   ② OIDC implicit flow: #access_token=...&refresh_token=... → setSession
 export async function handleAuthCallback(url: string): Promise<boolean> {
   try {
     const urlObj = new URL(url);
-
-    // ② Hash fragment 방식 우선 (Slack OIDC가 이쪽으로 옴)
     const fragment = urlObj.hash.startsWith("#") ? urlObj.hash.slice(1) : "";
     if (fragment) {
       const params = new URLSearchParams(fragment);
@@ -29,14 +36,11 @@ export async function handleAuthCallback(url: string): Promise<boolean> {
         return !error;
       }
     }
-
-    // ① Query code 방식 (PKCE)
     const code = urlObj.searchParams.get("code");
     if (code) {
       const { error } = await supabase.auth.exchangeCodeForSession(code);
       return !error;
     }
-
     return false;
   } catch {
     return false;
@@ -54,8 +58,8 @@ export interface SyncResult {
   plugin_rows: number;
 }
 
-/// 즉시 집계 동기화 (share_consent=true 유저만 호출). access_token + user_id를 명시적으로 넘긴다.
 export async function syncAggregatesNow(): Promise<SyncResult | null> {
+  if (!IS_TAURI) return null;
   const { data: sessionData } = await supabase.auth.getSession();
   const session = sessionData.session;
   if (!session) return null;

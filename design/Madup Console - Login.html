@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1440" />
+<title>매드업 토큰 모니터 — 로그인</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" />
+<link rel="stylesheet" href="theme.css" />
+<style>
+  :root {
+    --canvas-deep: #070B17; --canvas: #0B1126; --canvas-soft: #11183A;
+    --surface-1: #121A33; --surface-2: #19233F; --surface-3: #22304D;
+    --hairline: rgba(255,255,255,0.06); --hairline-strong: rgba(255,255,255,0.12);
+    --text-primary: #E7ECF7; --text-secondary: #9CA8C5; --text-tertiary: #6A7593; --text-faint: #454E6A;
+    --text-on-accent: #06122B;
+    --azure: #4DA3FF; --azure-bright: #7BBCFF; --azure-deep: #2C7BE5; --azure-soft: rgba(77,163,255,0.14);
+    --lime: #9BE15D; --lime-soft: rgba(155,225,93,0.14);
+    --amber: #F5B544;
+    --violet: #B68CFF;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--canvas-deep); color: var(--text-primary);
+    font-family: "Pretendard Variable", Pretendard, -apple-system, system-ui, sans-serif;
+    font-size: 13px; line-height: 1.45; overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  .num { font-family: "JetBrains Mono", "SF Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+  /* Stage */
+  .stage { width:100vw; height:100vh; display:flex; align-items:center; justify-content:center;
+    background: radial-gradient(ellipse at top left, #1a1f3a 0%, #050810 70%); padding: 24px; }
+
+  /* Window */
+  .window {
+    width: 1392px; height: 852px; border-radius: 20px;
+    background:
+      radial-gradient(ellipse 1100px 700px at 50% -10%, rgba(77,163,255,0.18) 0%, transparent 60%),
+      radial-gradient(ellipse 900px 600px at -10% 110%, rgba(182,140,255,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse 700px 400px at 110% 50%, rgba(245,181,68,0.05) 0%, transparent 60%),
+      linear-gradient(180deg, var(--canvas-soft) 0%, var(--canvas) 40%, var(--canvas) 100%);
+    border: 1px solid var(--hairline-strong);
+    overflow: hidden;
+    display: grid; grid-template-rows: 36px 28px 1fr auto;
+    box-shadow: 0 30px 90px rgba(0,0,0,0.6), 0 8px 30px rgba(0,0,0,0.4);
+  }
+
+  /* Titlebar */
+  .titlebar { display:grid; grid-template-columns: 1fr auto 1fr; align-items:center; padding: 0 16px;
+    border-bottom: 1px solid var(--hairline); }
+  .traffic { display:flex; gap:8px; align-items:center; }
+  .light { width:12px; height:12px; border-radius:50%; }
+  .light.r { background:#ff5f57; } .light.y { background:#febc2e; } .light.g { background:#28c840; }
+  .titlebar-center { font-size:12px; color:var(--text-secondary); display:flex; gap:8px; white-space:nowrap; }
+  .titlebar-right { display:flex; justify-content:flex-end; gap:8px; align-items:center; }
+  .status-pill { display:inline-flex; align-items:center; gap:6px; height:22px; padding:0 10px; border-radius:9999px;
+    background: var(--amber); color: #1a1206; font-size:11px; font-weight:600; white-space:nowrap; flex-shrink:0;
+    box-shadow: 0 0 12px rgba(245,181,68,0.35);
+  }
+  .status-pill .dot { width:6px; height:6px; border-radius:50%; background: #1a1206; }
+
+  /* Utility strip (MADUP · INTERNAL TOOL · KR) */
+  .utility-strip {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px;
+    background: rgba(7,11,23,0.6);
+    border-bottom: 1px solid var(--hairline);
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--text-tertiary);
+    white-space: nowrap;
+  }
+  .utility-strip .left {
+    display: inline-flex; align-items: center; gap: 14px;
+  }
+  .utility-strip .dot {
+    width: 3px; height: 3px; background: var(--text-faint); border-radius: 50%;
+  }
+  .utility-strip .right {
+    display: inline-flex; align-items: center; gap: 8px;
+    color: var(--amber);
+  }
+  .utility-strip .right .live-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--amber); box-shadow: 0 0 6px var(--amber);
+    animation: pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.5 } }
+
+  /* Main hero center */
+  .hero {
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    padding: 24px;
+  }
+
+  /* Decorative ambient: faint dot grid + tilted lines */
+  .ambient {
+    position: absolute; inset: 0; pointer-events: none;
+    background-image:
+      radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px);
+    background-size: 24px 24px;
+    background-position: 0 0;
+    mask-image: radial-gradient(ellipse 70% 55% at 50% 50%, black 30%, transparent 80%);
+    opacity: 0.6;
+  }
+
+  /* Login card */
+  .login-card {
+    position: relative;
+    width: 480px;
+    background: var(--surface-1);
+    border-radius: 20px;
+    border: 1px solid var(--hairline);
+    padding: 44px 44px 36px;
+    overflow: hidden;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.5), 0 0 60px rgba(77,163,255,0.06);
+  }
+  .login-card::before {
+    content: ""; position: absolute; inset: 0 0 auto 0; height: 50%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 100%);
+    pointer-events: none; border-radius: 20px 20px 0 0;
+  }
+  .login-card::after {
+    content: ""; position: absolute; inset: -1px;
+    background: linear-gradient(135deg, rgba(77,163,255,0.4), transparent 30%, transparent 70%, rgba(182,140,255,0.3));
+    border-radius: 21px;
+    mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
+    mask-composite: exclude;
+    -webkit-mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
+    -webkit-mask-composite: xor;
+    padding: 1px;
+    pointer-events: none;
+  }
+
+  /* Brand glyph */
+  .brand-glyph {
+    width: 56px; height: 56px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, var(--azure-bright) 0%, var(--azure-deep) 100%);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff;
+    font-weight: 800;
+    font-size: 24px;
+    letter-spacing: -0.05em;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.3),
+      0 0 0 1px rgba(77,163,255,0.4),
+      0 12px 24px rgba(77,163,255,0.3);
+    margin-bottom: 24px;
+    position: relative;
+  }
+  .brand-glyph::after {
+    content: ""; position: absolute; inset: -8px;
+    border-radius: 20px;
+    border: 1px solid rgba(77,163,255,0.15);
+    animation: ring 2.4s ease-in-out infinite;
+  }
+  @keyframes ring {
+    0%, 100% { transform: scale(1); opacity: 0.4; }
+    50% { transform: scale(1.05); opacity: 0.1; }
+  }
+
+  .login-eyebrow {
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--azure);
+    margin-bottom: 14px;
+  }
+
+  .login-title {
+    font-size: 36px; font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    line-height: 1.1;
+    margin-bottom: 14px;
+  }
+  .login-title .accent {
+    background: linear-gradient(120deg, var(--azure-bright) 0%, var(--violet) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .login-lede {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.55;
+    margin-bottom: 28px;
+  }
+  .login-lede .mail {
+    font-family: "JetBrains Mono", monospace;
+    color: var(--azure-bright);
+    font-weight: 500;
+  }
+
+  /* Slack button */
+  .slack-btn {
+    width: 100%;
+    height: 52px;
+    border-radius: 12px;
+    background: var(--azure);
+    color: var(--text-on-accent);
+    border: 0;
+    font-family: inherit;
+    font-size: 14.5px; font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    transition: background 140ms ease, transform 140ms ease;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.25),
+      0 8px 20px rgba(77,163,255,0.25),
+      0 0 0 0 rgba(77,163,255,0);
+    position: relative;
+    overflow: hidden;
+  }
+  .slack-btn::before {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  .slack-btn:hover {
+    background: var(--azure-bright);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.25),
+      0 12px 28px rgba(77,163,255,0.4);
+  }
+  .slack-btn:active { transform: translateY(1px); }
+  .slack-btn .slack-mark {
+    width: 22px; height: 22px;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+
+  /* Divider + dev shortcut */
+  .login-divider {
+    display: flex; align-items: center; gap: 12px;
+    margin: 22px 0 14px;
+  }
+  .login-divider .line { flex: 1; height: 1px; background: var(--hairline); }
+  .login-divider .label {
+    font-size: 10.5px; font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--text-faint);
+  }
+
+  .login-foot {
+    display: flex; gap: 10px;
+    align-items: flex-start;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: var(--surface-2);
+    border: 1px solid var(--hairline);
+    margin-top: 12px;
+  }
+  .login-foot svg { flex-shrink: 0; margin-top: 1px; color: var(--lime); }
+  .login-foot .text {
+    font-size: 12px; color: var(--text-tertiary); line-height: 1.55;
+  }
+  .login-foot .text strong { color: var(--text-secondary); font-weight: 600; }
+
+  /* Side details: floating chips */
+  .floating-chip {
+    position: absolute;
+    background: rgba(18,26,51,0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    padding: 10px 12px;
+    color: var(--text-secondary);
+    font-size: 11px;
+    display: flex; align-items: center; gap: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  }
+  .floating-chip.left-top {
+    left: calc(50% - 380px);
+    top: 28%;
+    transform: rotate(-2deg);
+  }
+  .floating-chip.right-top {
+    right: calc(50% - 380px);
+    top: 22%;
+    transform: rotate(3deg);
+  }
+  .floating-chip.left-bot {
+    left: calc(50% - 360px);
+    bottom: 28%;
+    transform: rotate(2deg);
+  }
+  .floating-chip.right-bot {
+    right: calc(50% - 360px);
+    bottom: 24%;
+    transform: rotate(-3deg);
+  }
+  .floating-chip .ico {
+    width: 22px; height: 22px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    color: #06122B;
+    font-size: 11px; font-weight: 700;
+  }
+  .floating-chip .num { color: var(--text-primary); font-weight: 600; }
+  .floating-chip .lbl { color: var(--text-tertiary); }
+
+  /* Bottom band */
+  .footer-band {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 28px;
+    background: rgba(7,11,23,0.7);
+    border-top: 1px solid var(--hairline);
+    font-size: 10.5px; font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--text-tertiary);
+    white-space: nowrap;
+  }
+  .footer-band .left {
+    display: inline-flex; align-items: center; gap: 12px;
+  }
+  .footer-band .left strong { color: var(--text-primary); }
+  .footer-band .dot { width:3px; height:3px; border-radius:50%; background: var(--text-faint); }
+  .footer-band .right {
+    display: inline-flex; align-items: center; gap: 14px;
+    color: var(--text-faint);
+    font-size: 10px;
+    text-transform: none; letter-spacing: 0;
+    font-weight: 400;
+  }
+  .footer-band .right .key {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-family: "JetBrains Mono", monospace;
+    background: var(--surface-2);
+    border: 1px solid var(--hairline);
+    border-radius: 4px;
+    padding: 2px 6px;
+    color: var(--text-tertiary);
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+<div class="window">
+
+  <!-- Title bar -->
+  <div class="titlebar">
+    <div class="traffic">
+      <span class="light r"></span><span class="light y"></span><span class="light g"></span>
+    </div>
+    <div class="titlebar-center">
+      <span>매드업 토큰 모니터</span>
+    </div>
+    <div class="titlebar-right">
+      <span class="status-pill"><span class="dot"></span><span>인증 대기 중</span></span>
+    </div>
+  </div>
+
+  <!-- Utility strip -->
+  <div class="utility-strip">
+    <div class="left">
+      <span>MADUP</span><span class="dot"></span>
+      <span>Internal Tool</span><span class="dot"></span>
+      <span>KR</span><span class="dot"></span>
+      <span class="num" style="color: var(--text-faint); letter-spacing:0; font-weight:500;">v0.1.22</span>
+    </div>
+    <div class="right">
+      <span class="live-dot"></span>
+      <span>Authentication required</span>
+    </div>
+  </div>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="ambient"></div>
+
+    <!-- Floating context chips -->
+    <div class="floating-chip left-top">
+      <span class="ico" style="background: var(--azure);">M</span>
+      <div>
+        <div class="num">16 members</div>
+        <div class="lbl">사내 워크스페이스</div>
+      </div>
+    </div>
+
+    <div class="floating-chip right-top">
+      <span class="ico" style="background: var(--lime); color: #06170A;">
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 8l3.5 3.5L13 4.5"/></svg>
+      </span>
+      <div>
+        <div class="num">로컬 우선</div>
+        <div class="lbl">원시 데이터는 디바이스 외부로 X</div>
+      </div>
+    </div>
+
+    <div class="floating-chip left-bot">
+      <span class="ico" style="background: var(--violet);">
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="#06122B" stroke-width="1.8"><path d="M3 6l5-3 5 3v6l-5 3-5-3V6z"/></svg>
+      </span>
+      <div>
+        <div class="num">MCP · 플러그인</div>
+        <div class="lbl">분석 옵트인 후 사용</div>
+      </div>
+    </div>
+
+    <div class="floating-chip right-bot">
+      <span class="ico" style="background: var(--amber); color: #1a1206;">$</span>
+      <div>
+        <div class="num">실시간 비용 추적</div>
+        <div class="lbl">5h 세션 · 주간 한도</div>
+      </div>
+    </div>
+
+    <!-- Card -->
+    <div class="login-card">
+      <div class="brand-glyph">M</div>
+
+      <div class="login-eyebrow">MADUP MEMBERS ONLY</div>
+
+      <h1 class="login-title">
+        매드업<br/>
+        <span class="accent">토큰 콘솔</span>에 로그인
+      </h1>
+
+      <p class="login-lede">
+        <span class="mail">@madup.com</span> 계정으로 Slack 인증 후 팀 채팅과 사내 집계 기능을 이용하세요.
+        외부 브라우저가 열리면 인증을 마치고 자동으로 이 창으로 돌아옵니다.
+      </p>
+
+      <button class="slack-btn">
+        <svg class="slack-mark" viewBox="0 0 122 122" fill="none">
+          <path d="M25.2 77.5a12.6 12.6 0 1 1-12.6-12.6h12.6v12.6z" fill="#E01E5A"/>
+          <path d="M31.6 77.5a12.6 12.6 0 1 1 25.2 0v31.6a12.6 12.6 0 1 1-25.2 0V77.5z" fill="#E01E5A"/>
+          <path d="M44.2 25.2a12.6 12.6 0 1 1 12.6-12.6v12.6H44.2z" fill="#36C5F0"/>
+          <path d="M44.2 31.6a12.6 12.6 0 1 1 0 25.2H12.6a12.6 12.6 0 1 1 0-25.2h31.6z" fill="#36C5F0"/>
+          <path d="M96.4 44.2a12.6 12.6 0 1 1 12.6 12.6H96.4V44.2z" fill="#2EB67D"/>
+          <path d="M90 44.2a12.6 12.6 0 1 1-25.2 0V12.6a12.6 12.6 0 1 1 25.2 0v31.6z" fill="#2EB67D"/>
+          <path d="M77.5 96.4A12.6 12.6 0 1 1 64.9 109v-12.6h12.6z" fill="#ECB22E"/>
+          <path d="M77.5 90a12.6 12.6 0 1 1 0-25.2h31.6a12.6 12.6 0 1 1 0 25.2H77.5z" fill="#ECB22E"/>
+        </svg>
+        Slack으로 로그인
+      </button>
+
+      <div class="login-divider">
+        <span class="line"></span>
+        <span class="label">Privacy</span>
+        <span class="line"></span>
+      </div>
+
+      <div class="login-foot">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M8 1l6 3v4a8 8 0 01-6 8 8 8 0 01-6-8V4l6-3z"/>
+          <path d="M5.5 8l2 2 3-4"/>
+        </svg>
+        <div class="text">
+          <strong>로컬 우선 (Local-first)</strong> · 원시 토큰 로그·프롬프트·대화 내용은 이 디바이스를 떠나지 않습니다.
+          사내 집계는 <strong>옵트인</strong>이며, 익명화된 사용량 합계만 전송됩니다.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Bottom band -->
+  <div class="footer-band">
+    <div class="left">
+      <span>© Madup</span>
+      <span class="dot"></span>
+      <span>Token Monitor</span>
+      <span class="dot"></span>
+      <span style="color: var(--text-faint); font-weight: 500;">Local-first · Aggregation is opt-in</span>
+    </div>
+    <div class="right">
+      <span>도움말</span>
+      <span class="key">⌘ ?</span>
+      <span style="margin-left:8px;">개발자 모드</span>
+      <span class="key">⌘ ⇧ D</span>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script src="theme.js"></script>
+
+</body>
+</html>

@@ -54,7 +54,7 @@ export function Select({
         aria-label={ariaLabel}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold rounded-md border border-hairline bg-canvas text-charcoal hover:border-ink transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+        className="mc-select"
       >
         <span>{selected?.label ?? value}</span>
         <svg
@@ -78,7 +78,11 @@ export function Select({
         <div
           ref={popoverRef}
           role="listbox"
-          className="absolute z-20 mt-1 left-0 min-w-full rounded-md border border-hairline bg-canvas shadow-[0_4px_12px_rgba(26,26,26,0.08)] overflow-hidden"
+          className="absolute z-20 mt-1 left-0 min-w-full rounded-md border border-hairline overflow-hidden"
+          style={{
+            background: "var(--color-surface-2)",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+          }}
         >
           {options.map((opt) => {
             const active = opt.value === value;
@@ -92,10 +96,10 @@ export function Select({
                   onChange(opt.value);
                   setOpen(false);
                 }}
-                className={`block w-full text-left px-3 py-1.5 text-[11px] font-semibold whitespace-nowrap transition-colors ${
+                className={`block w-full text-left px-3 py-2 text-[12px] font-medium whitespace-nowrap transition-colors ${
                   active
-                    ? "bg-primary-soft text-primary"
-                    : "text-charcoal hover:bg-cloud"
+                    ? "bg-azure-soft text-azure-bright"
+                    : "text-text-secondary hover:text-text-primary hover:bg-surface-3"
                 }`}
               >
                 {opt.label}
