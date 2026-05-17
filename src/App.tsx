@@ -13,7 +13,7 @@ import Settings from "@/pages/Settings";
 import Login from "@/pages/Login";
 import { AuthGuard } from "@/lib/AuthGuard";
 import { handleAuthCallback, syncAggregatesNow } from "@/lib/auth";
-import { supabase, getProfile } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TitleBar } from "@/components/layout/TitleBar";
 
@@ -52,7 +52,7 @@ function Layout() {
   );
 }
 
-/// share_consent=true 인 경우 1시간마다 사내 집계 sync. 로그인되어 있어야 호출됨.
+/// 로그인 시 1시간마다 사내 집계 sync. 모니터링 목적이라 opt-in 없이 항상 공유.
 function AggregateSyncDriver() {
   useEffect(() => {
     let cancelled = false;
@@ -64,8 +64,6 @@ function AggregateSyncDriver() {
         const { data: sessionData } = await supabase.auth.getSession();
         const userId = sessionData.session?.user.id;
         if (!userId) return;
-        const profile = await getProfile(userId);
-        if (!profile?.share_consent) return;
         await syncAggregatesNow();
       } catch (e) {
         console.warn("[aggregate-sync] failed:", e);

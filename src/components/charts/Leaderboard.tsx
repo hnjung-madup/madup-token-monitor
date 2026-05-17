@@ -13,6 +13,8 @@ interface LeaderboardProps {
   /// 우상단 푸터 컨텍스트 ("16명 중 10명 옵트인" 같은)
   footerContext?: string;
   isLoading?: boolean;
+  /// 행 클릭 시 호출 — USER 상세 모달 트리거.
+  onRowClick?: (entry: CompanyLeaderboardEntry) => void;
 }
 
 function initials(name: string): string {
@@ -38,6 +40,7 @@ export function Leaderboard({
   meIdentifier,
   footerContext,
   isLoading,
+  onRowClick,
 }: LeaderboardProps) {
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("rank");
@@ -182,9 +185,26 @@ export function Leaderboard({
             return (
               <div
                 key={`${r.display_name}-${r.rank}`}
+                role={onRowClick ? "button" : undefined}
+                tabIndex={onRowClick ? 0 : undefined}
+                onClick={onRowClick ? () => onRowClick(r) : undefined}
+                onKeyDown={
+                  onRowClick
+                    ? (e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          onRowClick(r);
+                        }
+                      }
+                    : undefined
+                }
                 className={`grid grid-cols-[28px_1fr_1fr_90px] gap-3 px-2.5 py-2.5 items-center ${
                   idx > 0 ? "border-t border-hairline" : ""
-                } ${isMe ? "bg-azure-soft border-t-transparent rounded-md" : ""}`}
+                } ${isMe ? "bg-azure-soft border-t-transparent rounded-md" : ""} ${
+                  onRowClick
+                    ? "cursor-pointer hover:bg-surface-2 transition-colors"
+                    : ""
+                }`}
               >
                 <div
                   className={`flex items-center justify-center w-7 h-7 rounded-full num text-[12px] font-semibold ${

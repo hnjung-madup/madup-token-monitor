@@ -6,10 +6,14 @@ import {
   useTimeseries,
   useHeatmap,
   useOAuthUsage,
+  useTopMcp,
+  useTopPlugins,
   refreshOAuthUsage,
 } from "@/hooks/useUsage";
 import { DailyBarChart } from "@/components/charts/DailyBarChart";
 import { HeatMap } from "@/components/HeatMap";
+import { PrismCarousel } from "@/components/ui/PrismCarousel";
+import { RankBarList } from "@/components/ui/RankBarList";
 import { MiniBarList } from "@/components/ui/MiniBarList";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { Sparkline } from "@/components/ui/Sparkline";
@@ -110,6 +114,57 @@ const DAILY_CARD_LIMIT: Partial<Record<Range, number>> = {
   "30d": 30,
 };
 
+const GAP_FILL_CAP = 400;
+
+/// 빈 날짜를 0 으로 채움 — daily: 오늘 기준 최근 `days` 일을 연속 생성.
+function fillDailyGaps(rows: AggRow[], days: number): AggRow[] {
+  if (days <= 0 || days > GAP_FILL_CAP) return rows;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const map = new Map(rows.map((r) => [r.date, r]));
+  const out: AggRow[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const key = localDateKey(d.getTime());
+    out.push(map.get(key) ?? { date: key, tokens: 0, cost: 0 });
+  }
+  return out;
+}
+
+/// weekly: 선택 월에 속하는 모든 주(월요일 시작) 를 0 으로 채움.
+function fillWeeklyGaps(rows: AggRow[], monthKeyStr: string): AggRow[] {
+  if (!monthKeyStr) return rows;
+  const [y, m] = monthKeyStr.split("-").map(Number);
+  const keysSet = new Set<string>();
+  const d = new Date(y, m - 1, 1);
+  while (d.getMonth() === m - 1) {
+    const wk = weekStartKey(d.getTime());
+    if (monthKey(new Date(wk + "T00:00:00").getTime()) === monthKeyStr) {
+      keysSet.add(wk);
+    }
+    d.setDate(d.getDate() + 1);
+  }
+  const keys = Array.from(keysSet).sort();
+  if (keys.length === 0 || keys.length > GAP_FILL_CAP) return rows;
+  const map = new Map(rows.map((r) => [r.date, r]));
+  return keys.map((k) => map.get(k) ?? { date: k, tokens: 0, cost: 0 });
+}
+
+/// monthly: 선택 년의 1월~(올해면 이번 달, 아니면 12월) 을 0 으로 채움.
+function fillMonthlyGaps(rows: AggRow[], year: string): AggRow[] {
+  if (!year) return rows;
+  const now = new Date();
+  const maxMonth =
+    Number(year) === now.getFullYear() ? now.getMonth() + 1 : 12;
+  const keys: string[] = [];
+  for (let mo = 1; mo <= maxMonth; mo++) {
+    keys.push(`${year}-${String(mo).padStart(2, "0")}`);
+  }
+  const map = new Map(rows.map((r) => [r.date, r]));
+  return keys.map((k) => map.get(k) ?? { date: k, tokens: 0, cost: 0 });
+}
+
 export function Dashboard() {
   const { t } = useTranslation();
   const qc = useQueryClient();
@@ -136,6 +191,10 @@ export function Dashboard() {
   const { data: tsMonth } = useTimeseries("30d");
   const { data: tsAll } = useTimeseries("all");
   const { data: heatmap } = useHeatmap(56);
+  const { data: topMcp } = useTopMcp("7d");
+  const { data: topPlugins } = useTopPlugins("7d");
+  const [activityIdx, setActivityIdx] = useState(0); // 0=히트맵 1=MCP 2=플러그인
+  const [activityAuto, setActivityAuto] = useState(true);
   const { data: oauthResp } = useOAuthUsage();
   const oauthUsage = oauthResp?.data ?? null;
   const oauthError = oauthResp?.error ?? null;
@@ -199,10 +258,16 @@ export function Dashboard() {
   }, [dailyGranularity, tsDaily, tsAll, selectedMonth, selectedYear]);
 
   const dailyLimit = DAILY_CARD_LIMIT[dailyRange] ?? 30;
-  const dailyRows =
-    dailyGranularity === "daily"
-      ? dailyAggregated.slice(-dailyLimit)
-      : dailyAggregated;
+  // 빈 날짜/주/월을 0 으로 채워 차트·리스트에서 누락 없이 연속 표시.
+  const dailyRows = useMemo<AggRow[]>(() => {
+    if (dailyGranularity === "daily") {
+      return fillDailyGaps(dailyAggregated, dailyLimit);
+    }
+    if (dailyGranularity === "weekly") {
+      return fillWeeklyGaps(dailyAggregated, selectedMonth);
+    }
+    return fillMonthlyGaps(dailyAggregated, selectedYear);
+  }, [dailyGranularity, dailyAggregated, dailyLimit, selectedMonth, selectedYear]);
 
   // 7d 합산 / 월간 합산.
   const thisWeek = useMemo(() => calcRange(tsMonth ?? [], "this-week"), [tsMonth]);
@@ -671,37 +736,166 @@ export function Dashboard() {
           </div>
         </section>
 
-        {/* ============ ROW 2: Activity heatmap (col-4) ============ */}
+        {/* ============ ROW 2: Activity carousel (col-4) ============ */}
         <section className="mc-card col-span-4">
           <header className="flex items-center justify-between mb-3.5 gap-3 relative">
             <span className="text-[15px] font-semibold text-text-primary tracking-[-0.005em]">
-              활동{" "}
+              {["활동", "MCP 사용량", "플러그인 사용량"][activityIdx]}{" "}
               <span className="text-text-tertiary font-normal text-[12px] ml-1">
-                최근 8주
+                {activityIdx === 0 ? "최근 8주" : "최근 7일"}
               </span>
             </span>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setActivityIdx((i) => (i + 2) % 3)}
+                aria-label="이전"
+                title="이전"
+                className="mc-icon-btn"
+              >
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M10 3L5 8l5 5" />
+                </svg>
+              </button>
+              <div className="flex items-center gap-1.5">
+                {[0, 1, 2].map((i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setActivityIdx(i)}
+                    aria-label={["활동", "MCP", "플러그인"][i]}
+                    className="w-2 h-2 rounded-full transition-colors"
+                    style={{
+                      background:
+                        i === activityIdx
+                          ? "var(--color-azure)"
+                          : "var(--color-surface-3)",
+                    }}
+                  />
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setActivityIdx((i) => (i + 1) % 3)}
+                aria-label="다음"
+                title="다음"
+                className="mc-icon-btn"
+              >
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M6 3l5 5-5 5" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={activityAuto}
+                onClick={() => setActivityAuto((v) => !v)}
+                title="자동 넘기기"
+                className="relative w-[34px] h-[20px] rounded-full transition-colors shrink-0 ml-1"
+                style={{
+                  background: activityAuto
+                    ? "var(--color-azure)"
+                    : "var(--color-surface-3)",
+                }}
+              >
+                <span
+                  className="absolute top-[2px] left-[2px] w-4 h-4 rounded-full transition-transform"
+                  style={{
+                    background: activityAuto
+                      ? "#fff"
+                      : "var(--color-text-secondary)",
+                    transform: activityAuto
+                      ? "translateX(14px)"
+                      : "translateX(0)",
+                  }}
+                />
+              </button>
+            </div>
           </header>
 
-          <HeatMap data={heatmap ?? []} weeks={8} />
-
-          <div className="mt-5 pt-3.5 border-t border-hairline grid grid-cols-2 gap-3.5">
-            <div>
-              <div className="text-[10px] font-bold tracking-[0.14em] uppercase text-text-tertiary mb-1.5">
-                평균 일일 토큰
-              </div>
-              <div className="num text-[20px] font-medium text-text-primary">
-                {formatTokensCompact(avgDailyTokens)}
-              </div>
-            </div>
-            <div>
-              <div className="text-[10px] font-bold tracking-[0.14em] uppercase text-text-tertiary mb-1.5">
-                활동일
-              </div>
-              <div className="num text-[20px] font-medium text-lime">
-                {activeDays}/56
-              </div>
-            </div>
-          </div>
+          <PrismCarousel
+            activeIndex={activityIdx}
+            onIndexChange={setActivityIdx}
+            auto={activityAuto}
+            intervalMs={5000}
+            height={320}
+            faces={[
+              {
+                key: "heatmap",
+                node: (
+                  <div className="h-full">
+                    <HeatMap data={heatmap ?? []} weeks={8} />
+                    <div className="mt-5 pt-3.5 border-t border-hairline grid grid-cols-2 gap-3.5">
+                      <div>
+                        <div className="text-[10px] font-bold tracking-[0.14em] uppercase text-text-tertiary mb-1.5">
+                          평균 일일 토큰
+                        </div>
+                        <div className="num text-[20px] font-medium text-text-primary">
+                          {formatTokensCompact(avgDailyTokens)}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-bold tracking-[0.14em] uppercase text-text-tertiary mb-1.5">
+                          활동일
+                        </div>
+                        <div className="num text-[20px] font-medium text-lime">
+                          {activeDays}/56
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                key: "mcp",
+                node: (
+                  <div className="h-full pr-1">
+                    <RankBarList
+                      items={(topMcp ?? []).map((m) => ({
+                        label: m.mcp_server,
+                        value: m.count,
+                      }))}
+                      formatValue={(v) => v.toLocaleString("ko-KR")}
+                      emptyMessage="MCP 사용 기록 없음 (최근 7일)"
+                    />
+                  </div>
+                ),
+              },
+              {
+                key: "plugins",
+                node: (
+                  <div className="h-full pr-1">
+                    <RankBarList
+                      items={(topPlugins ?? []).map((p) => ({
+                        label: p.plugin_id,
+                        value: p.count,
+                      }))}
+                      formatValue={(v) => v.toLocaleString("ko-KR")}
+                      emptyMessage="플러그인 사용 기록 없음 (최근 7일)"
+                    />
+                  </div>
+                ),
+              },
+            ]}
+          />
         </section>
 
         {/* ============ ROW 3: 4 col-3 cards ============ */}

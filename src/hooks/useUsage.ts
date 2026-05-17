@@ -32,13 +32,82 @@ export function useSummary(range: Range) {
   });
 }
 
+// usage_aggregates row (본인 user_id 만 RLS 로 SELECT 허용).
+interface MyAggregateRow {
+  date: string; // YYYY-MM-DD
+  source: string;
+  total_input: number;
+  total_output: number;
+  total_tokens: number;
+  total_cost_usd: number;
+}
+
+function rangeStartDate(range: Range): string | null {
+  if (range === "all") return null;
+  const days =
+    range === "1d" ? 0 : range === "7d" ? 7 : range === "30d" ? 30 : 365;
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/// 본인 user_id 의 모든 디바이스 합산본 (usage_aggregates) 을 Point[] 로 합성.
+/// usage_aggregates PK 가 (user_id, date, source) 라 디바이스 무관 자동 합산.
+/// cache 분리/시간단위/메시지수는 aggregates 에 없으므로 cache_read 에 잔여
+/// (total_tokens - input - output) 를 넣어 토큰 합계만 정합. 실패 시 null →
+/// 로컬 invoke fallback.
+async function fetchMyAggregatedPoints(
+  range: Range,
+  source?: string,
+): Promise<Point[] | null> {
+  try {
+    const { data: sess } = await supabase.auth.getSession();
+    const uid = sess.session?.user.id;
+    if (!uid) return null;
+    let q = supabase
+      .from("usage_aggregates")
+      .select("date,source,total_input,total_output,total_tokens,total_cost_usd")
+      .eq("user_id", uid);
+    const start = rangeStartDate(range);
+    if (start) q = q.gte("date", start);
+    if (source) q = q.eq("source", source);
+    const { data, error } = await q;
+    if (error || !data) return null;
+    const rows = data as MyAggregateRow[];
+    return rows.map((r) => {
+      const localMidnight = new Date(r.date + "T00:00:00").getTime();
+      const cacheRemainder = Math.max(
+        0,
+        r.total_tokens - r.total_input - r.total_output,
+      );
+      return {
+        ts: localMidnight,
+        input_tokens: r.total_input,
+        output_tokens: r.total_output,
+        cache_read: cacheRemainder,
+        cache_write: 0,
+        cost_usd: r.total_cost_usd,
+      };
+    });
+  } catch {
+    return null;
+  }
+}
+
 export function useTimeseries(range: Range, source?: string) {
   return useQuery({
     queryKey: ["timeseries", range, source],
-    queryFn: () =>
-      IS_MOCK
-        ? delay(buildMockTimeseries(range, source))
-        : tauriInvoke<Point[]>("get_timeseries", { range, source: source ?? null }),
+    queryFn: async () => {
+      if (IS_MOCK) return delay(buildMockTimeseries(range, source));
+      // 로그인 시 Supabase 합산본 우선 (다중 디바이스), 실패/비로그인 시 로컬.
+      const agg = await fetchMyAggregatedPoints(range, source);
+      if (agg && agg.length > 0) return agg;
+      return tauriInvoke<Point[]>("get_timeseries", {
+        range,
+        source: source ?? null,
+      });
+    },
     staleTime: 30_000,
   });
 }
@@ -185,6 +254,7 @@ export function useCompanyTopPlugins(rangeDays = 30) {
 
 // Supabase RPC `get_top_users(range_days, max_rows)` 결과 row 형태
 interface CompanyLeaderboardRow {
+  user_id: string | null;
   display_name: string;
   avatar_url: string | null;
   total_cost: number;
@@ -193,6 +263,7 @@ interface CompanyLeaderboardRow {
 
 export interface CompanyLeaderboardEntry {
   rank: number;
+  user_id: string | null;
   display_name: string;
   avatar_url: string | null;
   total_cost: number;
@@ -230,6 +301,7 @@ export function useCompanyLeaderboard(range: LeaderboardRange = "week") {
       const rows = (data ?? []) as CompanyLeaderboardRow[];
       return rows.map((r, i) => ({
         rank: i + 1,
+        user_id: r.user_id ?? null,
         display_name: r.display_name,
         avatar_url: r.avatar_url,
         total_cost: Number(r.total_cost),
@@ -240,6 +312,58 @@ export function useCompanyLeaderboard(range: LeaderboardRange = "week") {
     staleTime: 30_000,
     refetchInterval: 60_000,
     refetchOnWindowFocus: true,
+    retry: 0,
+  });
+}
+
+// 리더보드 USER 행 클릭 상세 — 특정 user 의 MCP / 플러그인 TOP.
+// security-definer RPC (get_user_mcp / get_user_plugins) — 다른 사람 데이터는
+// RLS 로 막혀 있어 RPC 우회. 모델별 토큰은 usage_aggregates 에 model 차원이 없어 제외.
+
+export function useUserMcp(userId: string | null, rangeDays = 30) {
+  return useQuery<McpUsage[], Error>({
+    queryKey: ["user_mcp", userId, rangeDays],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_user_mcp", {
+        p_user: userId,
+        range_days: rangeDays,
+      });
+      if (error) throw new Error(error.message);
+      const rows = (data ?? []) as {
+        mcp_server: string;
+        total_count: number;
+      }[];
+      return rows.map((r) => ({
+        mcp_server: r.mcp_server,
+        count: Number(r.total_count),
+      }));
+    },
+    staleTime: 60_000,
+    retry: 0,
+  });
+}
+
+export function useUserPlugins(userId: string | null, rangeDays = 30) {
+  return useQuery<PluginUsage[], Error>({
+    queryKey: ["user_plugins", userId, rangeDays],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_user_plugins", {
+        p_user: userId,
+        range_days: rangeDays,
+      });
+      if (error) throw new Error(error.message);
+      const rows = (data ?? []) as {
+        plugin_id: string;
+        total_count: number;
+      }[];
+      return rows.map((r) => ({
+        plugin_id: r.plugin_id,
+        count: Number(r.total_count),
+      }));
+    },
+    staleTime: 60_000,
     retry: 0,
   });
 }

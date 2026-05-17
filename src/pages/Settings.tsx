@@ -8,11 +8,7 @@ import {
   disable as disableAutostart,
   isEnabled as isAutostartEnabled,
 } from "@tauri-apps/plugin-autostart";
-import {
-  supabase,
-  getProfile,
-  updateProfile,
-} from "../lib/supabase";
+import { supabase } from "../lib/supabase";
 import { syncAggregatesNow, type SyncResult } from "../lib/auth";
 import { useAuthUser } from "../hooks/useAuthUser";
 import { Avatar } from "../components/Avatar";
@@ -22,15 +18,9 @@ const IS_TAURI = "__TAURI_INTERNALS__" in window;
 // =============================================================================
 // localStorage cache keys — Settings 진입 시 깜빡임 방지.
 // =============================================================================
-const PROFILE_CACHE_PREFIX = "madup-token-monitor:profile:";
 const AUTOSTART_CACHE_KEY = "madup-token-monitor:autostart";
 const DATA_DIR_CACHE_KEY = "madup-token-monitor:dataDir";
 const LAST_SYNC_KEY = "madup-token-monitor:lastSync";
-
-interface CachedProfile {
-  share_consent: boolean;
-  anonymized: boolean;
-}
 
 interface AppSettings {
   show_menubar_cost?: boolean;
@@ -75,15 +65,6 @@ export default function Settings() {
   const { user } = useAuthUser();
   const queryClient = useQueryClient();
 
-  // Profile
-  const cachedProfile = user
-    ? readJson<CachedProfile>(PROFILE_CACHE_PREFIX + user.id)
-    : null;
-  const [shareConsent, setShareConsent] = useState(cachedProfile?.share_consent ?? false);
-  const [anonymized, setAnonymized] = useState(cachedProfile?.anonymized ?? false);
-  const [loadingProfile, setLoadingProfile] = useState(!cachedProfile);
-  const [savingProfile, setSavingProfile] = useState(false);
-  const [profileError, setProfileError] = useState<string | null>(null);
 
   // App behavior
   const [autostart, setAutostart] = useState<boolean>(
@@ -151,55 +132,9 @@ export default function Settings() {
       .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    if (!user) {
-      setLoadingProfile(false);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      const profile = await getProfile(user.id);
-      if (cancelled) return;
-      if (profile) {
-        setShareConsent(profile.share_consent);
-        setAnonymized(profile.anonymized);
-        writeJson(PROFILE_CACHE_PREFIX + user.id, {
-          share_consent: profile.share_consent,
-          anonymized: profile.anonymized,
-        } satisfies CachedProfile);
-      }
-      setLoadingProfile(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [user]);
-
   // ───────────────────────────────────────────────────────────────────────────
   // Handlers
   // ───────────────────────────────────────────────────────────────────────────
-  async function persistToggle(updates: Partial<CachedProfile>) {
-    if (!user) return;
-    setSavingProfile(true);
-    setProfileError(null);
-    try {
-      await updateProfile(user.id, updates);
-      const cached =
-        readJson<CachedProfile>(PROFILE_CACHE_PREFIX + user.id) ?? {
-          share_consent: shareConsent,
-          anonymized,
-        };
-      writeJson(PROFILE_CACHE_PREFIX + user.id, { ...cached, ...updates });
-      queryClient.invalidateQueries({ queryKey: ["company_leaderboard"] });
-      queryClient.invalidateQueries({ queryKey: ["company_top_mcp"] });
-      queryClient.invalidateQueries({ queryKey: ["company_top_plugins"] });
-    } catch (e) {
-      setProfileError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setSavingProfile(false);
-    }
-  }
-
   async function handleAutostartChange(next: boolean) {
     setAutostart(next);
     try {
@@ -359,12 +294,8 @@ export default function Settings() {
                     </strong>
                     {user.slackHandle ? `@${user.slackHandle}` : "연동됨"}
                   </span>
-                  {shareConsent && (
-                    <>
-                      <span>·</span>
-                      <span className="text-lime">● 옵트인 활성</span>
-                    </>
-                  )}
+                  <span>·</span>
+                  <span className="text-lime">● 사내 집계 공유 중</span>
                 </div>
               </div>
               <button
@@ -395,51 +326,20 @@ export default function Settings() {
         </Card>
 
         {/* ============ 02 · 데이터 정책 ============ */}
-        <Card num="02" eyebrow="데이터 정책" title="사내 집계 옵트인">
+        <Card num="02" eyebrow="데이터 정책" title="사내 집계">
           <p className="text-[13px] text-text-secondary leading-relaxed mb-3.5">
-            사내 집계 기능은{" "}
-            <strong className="text-text-primary font-semibold">옵트인 방식</strong>
-            입니다. 동의하는 경우에만 익명화된 토큰 사용량이 팀 대시보드에
-            집계됩니다.{" "}
+            사내 집계는{" "}
+            <strong className="text-text-primary font-semibold">
+              모니터링 목적으로 항상 공유
+            </strong>
+            됩니다. 토큰 카운트와 비용 합계만 본인 계정으로 업로드되며,{" "}
             <span className="text-lime">
               원시 로그나 대화 내용은 절대 전송되지 않습니다.
-            </span>
+            </span>{" "}
+            같은 Slack 계정의 여러 디바이스 사용량은 자동으로 합산됩니다.
           </p>
 
-          {!user ? (
-            <p className="text-[12px] text-text-faint italic">
-              로그인 후 옵트인 설정이 가능합니다.
-            </p>
-          ) : (
-            <div className="flex flex-col gap-2.5">
-              <CheckRow
-                checked={shareConsent}
-                disabled={loadingProfile || savingProfile}
-                onChange={(v) => {
-                  setShareConsent(v);
-                  persistToggle({ share_consent: v });
-                }}
-                label="익명화된 토큰 사용량을 팀 집계에 포함합니다"
-                description="토큰 카운트와 비용 합계만 업로드됩니다. 원본 메시지/프롬프트는 전송 X."
-              />
-              <CheckRow
-                checked={anonymized}
-                disabled={!shareConsent || loadingProfile || savingProfile}
-                onChange={(v) => {
-                  setAnonymized(v);
-                  persistToggle({ anonymized: v });
-                }}
-                label="사내 리더보드에서 익명으로 표시"
-                description="Slack 핸들/아바타 대신 '익명-XX'으로 표시됩니다. 본인 데이터는 본인만 볼 수 있습니다."
-              />
-            </div>
-          )}
-
-          {profileError && (
-            <p className="text-[11px] text-coral mt-2">저장 실패: {profileError}</p>
-          )}
-
-          {user && shareConsent && (
+          {user && (
             <div className="mt-4 pt-4 border-t border-hairline">
               <div className="flex justify-between items-start gap-4">
                 <div className="flex-1 min-w-0">
@@ -495,8 +395,8 @@ export default function Settings() {
           )}
 
           <Notice>
-            옵트인은 언제든 철회할 수 있습니다. 철회 시 이전에 업로드된 집계
-            데이터도 30일 이내에 삭제됩니다.
+            모니터링 목적의 사내 도구이므로 집계는 옵트아웃할 수 없습니다. 단,
+            전송되는 데이터는 토큰/비용 합계뿐이며 원본은 로컬을 떠나지 않습니다.
           </Notice>
         </Card>
 
@@ -732,70 +632,6 @@ function Card({ num, eyebrow, title, children, danger }: CardProps) {
       </div>
       <div>{children}</div>
     </section>
-  );
-}
-
-interface CheckRowProps {
-  checked: boolean;
-  disabled?: boolean;
-  onChange: (next: boolean) => void;
-  label: string;
-  description: string;
-}
-function CheckRow({ checked, disabled, onChange, label, description }: CheckRowProps) {
-  return (
-    <button
-      type="button"
-      onClick={() => !disabled && onChange(!checked)}
-      disabled={disabled}
-      className={`grid grid-cols-[22px_1fr] gap-3.5 items-start text-left p-3.5 rounded-[10px] border transition-colors ${
-        checked
-          ? "border-[rgba(77,163,255,0.3)]"
-          : "border-hairline hover:border-hairline-strong"
-      } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
-      style={{
-        background: checked
-          ? "var(--color-azure-soft)"
-          : "var(--color-surface-2)",
-      }}
-    >
-      <div
-        className={`w-[18px] h-[18px] rounded-[5px] border-[1.5px] flex items-center justify-center mt-0.5 transition-colors ${
-          checked ? "border-azure" : "border-hairline-strong"
-        }`}
-        style={{
-          background: checked
-            ? "var(--color-azure)"
-            : "var(--color-surface-1)",
-        }}
-      >
-        <svg
-          width="11"
-          height="11"
-          viewBox="0 0 14 14"
-          fill="none"
-          stroke="#06122B"
-          strokeWidth="2.4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          style={{ opacity: checked ? 1 : 0 }}
-        >
-          <path d="M2 7l3.5 3.5L12 4" />
-        </svg>
-      </div>
-      <div className="min-w-0">
-        <div
-          className={`text-[13.5px] font-semibold leading-snug mb-1 ${
-            checked ? "text-azure-bright" : "text-text-primary"
-          }`}
-        >
-          {label}
-        </div>
-        <div className="text-[12px] text-text-tertiary leading-relaxed">
-          {description}
-        </div>
-      </div>
-    </button>
   );
 }
 

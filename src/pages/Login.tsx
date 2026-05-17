@@ -132,7 +132,7 @@ export default function Login() {
           }
           iconBg="var(--color-violet)"
           title="MCP · 플러그인"
-          subtitle="분석 옵트인 후 사용"
+          subtitle="사내 집계 자동 공유"
         />
         <FloatingChip
           className="right-[calc(50%-360px)] bottom-[24%] -rotate-3"
@@ -284,8 +284,10 @@ export default function Login() {
               </strong>{" "}
               · 원시 토큰 로그·프롬프트·대화 내용은 이 디바이스를 떠나지 않습니다.
               사내 집계는{" "}
-              <strong className="font-semibold text-text-secondary">옵트인</strong>
-              이며, 익명화된 사용량 합계만 전송됩니다.
+              <strong className="font-semibold text-text-secondary">
+                모니터링 목적으로 공유
+              </strong>
+              되며, 토큰/비용 합계만 전송됩니다.
             </p>
           </div>
         </section>
@@ -302,7 +304,7 @@ export default function Login() {
           <span className="text-text-primary">Token Monitor</span>
           <Dot />
           <span className="text-text-faint font-medium tracking-[0.14em]">
-            Local-first · Aggregation is opt-in
+            Local-first · Aggregates shared for monitoring
           </span>
         </div>
         <div className="inline-flex items-center gap-3.5 text-text-faint normal-case tracking-normal text-[10px] font-normal">

@@ -18,34 +18,36 @@ function levelClass(count: number, max: number): string {
   return "bg-azure-bright shadow-[0_0_6px_rgba(123,188,255,0.35)]";
 }
 
-/// 7행(요일) × N열(주) 매트릭스. 첫 컬럼 시작이 월요일이 되도록 head padding.
+/// 7행(요일) × N열(주) 매트릭스.
+/// 오늘 기준 최근 `weeks*7` 일을 빠짐없이 연속 생성 — 데이터 없는 날은 count 0
+/// (투명 padding 아님, surface-2 셀 + "0건" tooltip). 월요일 정렬용 head/tail
+/// padding 만 null(투명).
 function buildMatrix(data: DayCount[], weeks: number) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayKey = localKey(today);
+  const totalDays = weeks * 7;
+  const byDate = new Map(data.map((d) => [d.date, d]));
 
-  // 가장 최근 일요일 기준으로 끝을 맞추되, weeks 만큼 거꾸로 채운다.
-  // 단순하게: data 의 sorted 끝에서 weeks*7 개를 잘라 사용. 부족하면 head padding.
-  const sorted = [...data].sort((a, b) => a.date.localeCompare(b.date));
-  const totalCells = weeks * 7;
-  const slice = sorted.slice(-totalCells);
-
-  // 시작 요일에 맞춰 앞쪽 padding (월요일 시작).
-  let headPad = 0;
-  if (slice.length > 0) {
-    const first = new Date(slice[0].date + "T00:00:00");
-    headPad = (first.getDay() + 6) % 7; // Mon=0
+  const series: DayCount[] = [];
+  for (let i = totalDays - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const key = localKey(d);
+    series.push(byDate.get(key) ?? { date: key, count: 0, cost_usd: 0 });
   }
-  const padded: (DayCount | null)[] = Array(headPad).fill(null).concat(slice);
-  while (padded.length < totalCells + headPad) padded.push(null);
+
+  // 첫 날짜 요일에 맞춰 앞쪽 padding (월요일 시작) — 진짜 grid 공백만 null.
+  const first = new Date(series[0].date + "T00:00:00");
+  const headPad = (first.getDay() + 6) % 7; // Mon=0
+  const padded: (DayCount | null)[] = Array(headPad).fill(null).concat(series);
+  while (padded.length % 7 !== 0) padded.push(null);
 
   // 7×N 매트릭스: rows[day][week]
   const rows: (DayCount | null)[][] = Array.from({ length: 7 }, () => []);
   for (let i = 0; i < padded.length; i++) {
-    const day = i % 7;
-    rows[day].push(padded[i]);
+    rows[i % 7].push(padded[i]);
   }
-  // 모든 행 길이 통일
   const maxLen = Math.max(...rows.map((r) => r.length));
   for (const r of rows) while (r.length < maxLen) r.push(null);
 

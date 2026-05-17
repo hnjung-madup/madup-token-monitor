@@ -4,26 +4,26 @@ import {
   useCompanyLeaderboard,
   useCompanyTopMcp,
   useCompanyTopPlugins,
+  useUserMcp,
+  useUserPlugins,
   useSummary,
   type LeaderboardRange,
+  type CompanyLeaderboardEntry,
 } from "@/hooks/useUsage";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { Sparkline } from "@/components/ui/Sparkline";
-import { Segmented } from "@/components/ui/Segmented";
 import { RingMeter } from "@/components/ui/RingMeter";
 import { RankBarList } from "@/components/ui/RankBarList";
 import { Leaderboard } from "@/components/charts/Leaderboard";
+import { PrismCarousel } from "@/components/ui/PrismCarousel";
+import { Modal } from "@/components/ui/Modal";
 import {
   formatTokensCompact,
   formatUSD,
   formatKRW,
 } from "@/lib/format";
 
-const PERIOD_OPTIONS: { value: LeaderboardRange; label: string }[] = [
-  { value: "today", label: "오늘" },
-  { value: "week", label: "이번 주" },
-  { value: "month", label: "이번 달" },
-];
+const RANGES: LeaderboardRange[] = ["today", "week", "month"];
 
 const PERIOD_SUFFIX: Record<LeaderboardRange, string> = {
   today: "오늘",
@@ -34,10 +34,32 @@ const PERIOD_SUFFIX: Record<LeaderboardRange, string> = {
 export default function CompanyDashboard() {
   const qc = useQueryClient();
   const { user } = useAuthUser();
-  const [period, setPeriod] = useState<LeaderboardRange>("week");
+  const [carouselIdx, setCarouselIdx] = useState(1); // 0=오늘 1=이번주 2=이번달
+  const [autoRotate, setAutoRotate] = useState(true);
+  const [detailUser, setDetailUser] = useState<CompanyLeaderboardEntry | null>(
+    null,
+  );
   const [refreshing, setRefreshing] = useState(false);
 
-  const lb = useCompanyLeaderboard(period);
+  const period = RANGES[carouselIdx];
+  // useCompanyLeaderboard 의 rangeToDays 와 동일 의미 — per-user RPC 가 같은 창을 보게.
+  const leaderboardDays = (() => {
+    const now = new Date();
+    if (period === "today") return 0;
+    if (period === "week") return (now.getDay() + 6) % 7;
+    return now.getDate() - 1;
+  })();
+
+  // 3 면 모두 prefetch (캐시 키가 range 별로 분리되어 동시 호출 OK).
+  const lbToday = useCompanyLeaderboard("today");
+  const lbWeek = useCompanyLeaderboard("week");
+  const lbMonth = useCompanyLeaderboard("month");
+  const lbByRange: Record<LeaderboardRange, typeof lbToday> = {
+    today: lbToday,
+    week: lbWeek,
+    month: lbMonth,
+  };
+  const lb = lbByRange[period];
   const mcp = useCompanyTopMcp(30);
   const plugins = useCompanyTopPlugins(30);
   // 사이드 카드 — 전사 모델 집계 RPC 가 없어 본인 7일 by_model 를 컨텍스트로 표시.
@@ -101,12 +123,6 @@ export default function CompanyDashboard() {
           </p>
         </div>
         <div className="flex gap-2 items-center shrink-0">
-          <Segmented
-            value={period}
-            onChange={setPeriod}
-            options={PERIOD_OPTIONS}
-            ariaLabel="기간 선택"
-          />
           <button
             onClick={handleRefresh}
             disabled={refreshing}
@@ -207,9 +223,9 @@ export default function CompanyDashboard() {
           }
         />
 
-        {/* ============ ROW 2: Leaderboard (col-8) + Side card (col-4) ============ */}
+        {/* ============ ROW 2: Leaderboard carousel (col-8) + Side card (col-4) ============ */}
         <section className="mc-card col-span-8">
-          <header className="flex items-center justify-between mb-3 gap-3 relative">
+          <header className="flex items-center justify-between mb-3 gap-3 relative flex-wrap">
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-[15px] font-semibold text-text-primary tracking-[-0.005em]">
                 사용량 리더보드
@@ -218,23 +234,136 @@ export default function CompanyDashboard() {
                 {PERIOD_SUFFIX[period]} · 매드업 전사
               </span>
             </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {/* prev / next */}
+              <button
+                type="button"
+                onClick={() =>
+                  setCarouselIdx((i) => (i + RANGES.length - 1) % RANGES.length)
+                }
+                aria-label="이전"
+                title="이전"
+                className="mc-icon-btn"
+              >
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M10 3L5 8l5 5" />
+                </svg>
+              </button>
+              {/* range dots */}
+              <div className="flex items-center gap-1.5">
+                {RANGES.map((r, i) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setCarouselIdx(i)}
+                    aria-label={PERIOD_SUFFIX[r]}
+                    title={PERIOD_SUFFIX[r]}
+                    className="w-2 h-2 rounded-full transition-colors"
+                    style={{
+                      background:
+                        i === carouselIdx
+                          ? "var(--color-azure)"
+                          : "var(--color-surface-3)",
+                    }}
+                  />
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setCarouselIdx((i) => (i + 1) % RANGES.length)}
+                aria-label="다음"
+                title="다음"
+                className="mc-icon-btn"
+              >
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M6 3l5 5-5 5" />
+                </svg>
+              </button>
+              {/* auto-rotate toggle */}
+              <button
+                type="button"
+                role="switch"
+                aria-checked={autoRotate}
+                onClick={() => setAutoRotate((v) => !v)}
+                title="자동 넘기기"
+                className="relative w-[34px] h-[20px] rounded-full transition-colors shrink-0 ml-1"
+                style={{
+                  background: autoRotate
+                    ? "var(--color-azure)"
+                    : "var(--color-surface-3)",
+                }}
+              >
+                <span
+                  className="absolute top-[2px] left-[2px] w-4 h-4 rounded-full transition-transform"
+                  style={{
+                    background: autoRotate
+                      ? "#fff"
+                      : "var(--color-text-secondary)",
+                    transform: autoRotate
+                      ? "translateX(14px)"
+                      : "translateX(0)",
+                  }}
+                />
+              </button>
+              <span className="text-[11px] text-text-tertiary whitespace-nowrap">
+                자동
+              </span>
+            </div>
           </header>
 
-          {lb.error && (
-            <div className="text-[12px] text-coral mb-3 px-2">
-              리더보드 RPC 실패: {String(lb.error?.message ?? lb.error)}
-            </div>
-          )}
-
-          <Leaderboard
-            rows={rows}
-            meIdentifier={user?.email ?? user?.name ?? null}
-            isLoading={lb.isLoading}
-            footerContext={
-              activeUsers > 0
-                ? `${activeUsers}명 표시 · 옵트인 사용자만`
-                : "옵트인한 사용자가 없습니다"
-            }
+          <PrismCarousel
+            activeIndex={carouselIdx}
+            onIndexChange={setCarouselIdx}
+            auto={autoRotate}
+            paused={detailUser !== null}
+            intervalMs={5000}
+            height={460}
+            faces={RANGES.map((r) => {
+              const q = lbByRange[r];
+              const qrows = q.data ?? [];
+              return {
+                key: r,
+                node: (
+                  <div className="h-full pr-1">
+                    {q.error && (
+                      <div className="text-[12px] text-coral mb-3 px-2">
+                        리더보드 RPC 실패:{" "}
+                        {String(q.error?.message ?? q.error)}
+                      </div>
+                    )}
+                    <Leaderboard
+                      rows={qrows}
+                      meIdentifier={user?.email ?? user?.name ?? null}
+                      isLoading={q.isLoading}
+                      onRowClick={setDetailUser}
+                      footerContext={
+                        qrows.length > 0
+                          ? `${PERIOD_SUFFIX[r]} · ${qrows.length}명 · 행 클릭 시 상세`
+                          : "집계 데이터 없음"
+                      }
+                    />
+                  </div>
+                ),
+              };
+            })}
           />
         </section>
 
@@ -352,7 +481,131 @@ export default function CompanyDashboard() {
           </div>
         </section>
       </div>
+
+      {detailUser && (
+        <UserDetailModal
+          entry={detailUser}
+          rangeDays={leaderboardDays}
+          periodLabel={PERIOD_SUFFIX[period]}
+          onClose={() => setDetailUser(null)}
+        />
+      )}
     </div>
+  );
+}
+
+// =============================================================================
+// USER 행 클릭 상세 모달 — 토큰/비용 요약 + MCP TOP + 플러그인 TOP.
+// 모델별 토큰은 usage_aggregates 에 model 차원이 없어 제외.
+// =============================================================================
+function UserDetailModal({
+  entry,
+  rangeDays,
+  periodLabel,
+  onClose,
+}: {
+  entry: CompanyLeaderboardEntry;
+  rangeDays: number;
+  periodLabel: string;
+  onClose: () => void;
+}) {
+  const mcp = useUserMcp(entry.user_id, rangeDays);
+  const plugins = useUserPlugins(entry.user_id, rangeDays);
+  const mcpRows = mcp.data ?? [];
+  const pluginRows = plugins.data ?? [];
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={`${entry.display_name} · ${periodLabel}`}
+      maxWidth={720}
+    >
+      {/* 요약 */}
+      <div className="grid grid-cols-3 gap-4 mb-5">
+        <div>
+          <div className="text-[10.5px] font-bold tracking-[0.14em] uppercase text-text-tertiary mb-1.5">
+            순위
+          </div>
+          <div className="num text-[22px] font-medium text-violet">
+            #{entry.rank}
+          </div>
+        </div>
+        <div>
+          <div className="text-[10.5px] font-bold tracking-[0.14em] uppercase text-text-tertiary mb-1.5">
+            토큰
+          </div>
+          <div className="num text-[22px] font-medium text-azure">
+            {formatTokensCompact(entry.total_tokens)}
+          </div>
+        </div>
+        <div>
+          <div className="text-[10.5px] font-bold tracking-[0.14em] uppercase text-text-tertiary mb-1.5">
+            비용
+          </div>
+          <div className="num text-[22px] font-medium text-amber">
+            {formatUSD(entry.total_cost)}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-5">
+        <section>
+          <header className="mb-3">
+            <span className="text-[13px] font-semibold text-text-primary">
+              MCP TOP
+            </span>
+            <span className="text-[11px] text-text-tertiary ml-2">
+              호출 횟수
+            </span>
+          </header>
+          {mcp.error ? (
+            <p className="text-[12px] text-coral">
+              RPC 실패: {String(mcp.error.message)}
+            </p>
+          ) : (
+            <RankBarList
+              items={mcpRows.map((m) => ({
+                label: m.mcp_server,
+                value: m.count,
+              }))}
+              formatValue={(v) => v.toLocaleString("ko-KR")}
+              emptyMessage={mcp.isLoading ? "불러오는 중…" : "MCP 기록 없음"}
+            />
+          )}
+        </section>
+        <section>
+          <header className="mb-3">
+            <span className="text-[13px] font-semibold text-text-primary">
+              플러그인 TOP
+            </span>
+            <span className="text-[11px] text-text-tertiary ml-2">
+              사용 횟수
+            </span>
+          </header>
+          {plugins.error ? (
+            <p className="text-[12px] text-coral">
+              RPC 실패: {String(plugins.error.message)}
+            </p>
+          ) : (
+            <RankBarList
+              items={pluginRows.map((p) => ({
+                label: p.plugin_id,
+                value: p.count,
+              }))}
+              formatValue={(v) => v.toLocaleString("ko-KR")}
+              emptyMessage={
+                plugins.isLoading ? "불러오는 중…" : "플러그인 기록 없음"
+              }
+            />
+          )}
+        </section>
+      </div>
+
+      <p className="text-[11px] text-text-faint mt-5 pt-3 border-t border-hairline">
+        모델별 토큰은 집계 스키마에 model 차원이 없어 제외됨.
+      </p>
+    </Modal>
   );
 }
 
